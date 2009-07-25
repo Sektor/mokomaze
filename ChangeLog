@@ -1,0 +1,39 @@
+2009-05-05	v0.5.1
+	* Added anti-aliasing
+
+2009-04-29	v0.5.0
+	* Physics engine changed to ODE
+	* Added rolling ball animation
+	* Added falling ball animation
+	* Added shadows from the walls
+	* Improved GUI and game skin
+	* Added exit button
+	* Added gravity calibration function
+
+2009-04-15	v0.2.3
+	* Added support of 2.6.29 kernel
+
+2009-02-15	v0.2.2
+	* Keyboard input is supported
+	* Savegame data stores in HOME directory
+	* Path to font file is configurable by parameter to make
+	* More checks and messages while working with files
+	* Command line arguments support is improved
+
+2009-02-03	v0.2.1
+	* Improved compatability with FSO, SHR (vibration works now)
+	  and FDOM (can be run now)
+
+2009-01-31	v0.2.0
+	* Physics: dramatically improved - twitchings are eliminated
+	* Added fullscreen support
+	* Added basic GUI functionality for level switching
+	* Added saving of current level number in user's profile during exit
+
+2009-01-24	v0.1.1
+	* The ball interaction with box corners is improved
+	* Levelpack file format is extended
+
+2009-01-19	v0.1
+	* Initial release
+

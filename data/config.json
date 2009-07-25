@@ -1,0 +1,28 @@
+{
+
+    "window": {
+        "width": 480,
+        "height": 640,
+        "frame_delay": 2,
+        "fullscreen": 1
+    },
+
+    "ball": {
+        "radius": 23
+    },
+
+    "hole": {
+        "radius": 28
+    },
+
+    "vibro": {
+        "enabled": 1
+    },
+
+    "exec": {
+        "init": "",
+        "final": ""
+    }
+
+}
+

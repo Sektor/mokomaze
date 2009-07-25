@@ -1,0 +1,102 @@
+                               Mokomaze
+
+                  Copyright (C) 2009 Anton Olkhovik
+                         <ant007h@gmail.com>
+======================================================================
+
+Mokomaze is the opensource implementation of the classic game where
+you control a steel ball by tilting a wooden labyrinth. It is
+written in C using SDL and adapted for Neo Freerunner.
+
+Benefits:
+ * controlled by accelerometer
+ * simulates (by vibration) feedback from ball hits against the walls
+ * high performance and low resource consumption
+ * simple levelpack file format
+
+Building and installation:
+--------------------------
+As usual:
+  $ ./configure
+  $ make
+  # make install
+The program uses "LiberationMono-Regular.ttf" font
+(from package "ttf-liberation") which is usually placed in directory
+"/usr/share/fonts/truetype/ttf-liberation". This path is configurable
+via FONTDIR parameter for ./configure. E.g.:
+  $ ./configure FONTDIR=/some/directory
+libsdl, libsdl-image, libsdl-ttf and libode are also needed for
+compilation. There is also --enable-rgb-swap option for ./configure
+that may help to avoid font color swapping (specific to various
+libsdl builds) which is assumed to be yellow-orange, not blue.
+
+For cross-compiling, first set up the environment to use your toolchain
+and pass architecture name to ./configure. For example, to compile the
+game for Neo Freerunner with Openmoko Toolchain execute
+  $ . /usr/local/openmoko/arm/setup-env
+then install needed development packages if you have not done it
+earlier:
+  $ opkg-target update #unnecessary
+  $ opkg-target install libsdl-1.2-dev
+  $ opkg-target install libsdl-image-1.2-dev
+  $ opkg-target install libsdl-ttf-dev
+Configure the project and compile it
+  $ ./configure --host=arm-angstrom-linux-gnueabi --prefix=/usr \
+  > --enable-rgb-swap FONTDIR=/usr/share/fonts/truetype
+  $ make
+To create .ipk file execute
+  $ cd ..
+  $ om-make-ipkg <mokomaze-src-dir> <control-file>
+Now copy installation package to Freerunner or memory card and
+install it by 'opkg install'.
+
+Running:
+--------
+Click on Mokomaze logo on home screen or application menu or run it
+from the terminal by typing
+  $ mokomaze
+Some parameters can also be passed to it:
+    mokomaze [-i input_device_type] [-l level_number] [-c option]
+    -i, --input
+        It is used to determine input device type manually. Currently
+        supported values is 'freerunner' (to use Freerunner's
+        accelerometer) and 'keyboard'.
+    -l, --level
+        It specifies a level from which the game will be started.
+        Levels are counted from 1.
+    -c, --calibrate
+        It is used to perform the accelerometer calibration
+        ('auto' option) or to reset calibration data ('reset' option).
+    Examples:
+        mokomaze
+        mokomaze -l 5
+        mokomaze -i freerunner
+        mokomaze -i keyboard -l 2
+        mokomaze -c auto
+        mokomaze -c reset
+
+Playing:
+--------
+Control the ball by tilting your Freerunner. Reach the exit, marked by
+Openmoko logo, avoiding other holes.
+
+Levelpack file format:
+------------------
+Levelpack file written in json and have simple structure. There are some
+game levels in the file. Each level consists of "boxes" (walls),
+"holes" and "checkpoints". Boxes are specified by 2 points:
+  (x1,y1) - top left point in current screen coordinate system 
+            (Mokomaze does not change screen parameters)
+  (x2,y2) - bottom right point
+
+Graphic content
+---------------
+All the pictures are made by the author of the game. The exception is
+"Blue Velvet" Icons (used as a part of GUI) by http://dryicons.com which
+is destributed under DryIcons Free License. The logo of Mokomaze was
+created under the impression of Neverball logo.
+
+No Warranty
+-----------
+Mokomaze comes with ABSOLUTELY NO WARRANTY. See the COPYING file for
+details.
