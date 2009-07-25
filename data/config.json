@@ -15,8 +15,14 @@
         "radius": 28
     },
 
+    "key": {
+        "radius": 24
+    },
+
     "vibro": {
-        "enabled": 1
+        "enabled": 1,
+        "force": 100,
+        "interval": 100
     },
 
     "exec": {

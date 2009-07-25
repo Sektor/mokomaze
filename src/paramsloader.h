@@ -45,5 +45,8 @@ void SetUserCalY(float y);
 
 void SaveLevel(int n);
 
+int GetVibroForce();
+int GetVibroInterval();
+
 #endif
 

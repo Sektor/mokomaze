@@ -41,6 +41,8 @@ User user_set;
 Prompt arguments;
 int game_levels_count;
 int vibro_enabled;
+int vibro_force=100;
+int vibro_interval=100;
 char *exec_init, *exec_final;
 
 #define SAVE_DIR ".mokomaze"
@@ -150,10 +152,18 @@ void load_params()
     //printf("%s\n", root->child-> next->next-> child->child->child->text);
     game_config.hole_r = atoi(root->child-> next->next-> child->child->child->text);
 
-    vibro_enabled = atoi(root->child-> next->next->next-> child->child->child->text);
+    game_config.key_r = atoi(root->child-> next->next->next-> child->child->child->text);
 
-    exec_init  = strdup(root->child-> next->next->next->next-> child->child->child->text);
-    exec_final = strdup(root->child-> next->next->next->next-> child->child-> next-> child->text);
+    vibro_enabled  = atoi(root->child-> next->next->next->next-> child->child-> child->text);
+    vibro_force    = atoi(root->child-> next->next->next->next-> child->child-> next-> child->text);
+    vibro_interval = atoi(root->child-> next->next->next->next-> child->child-> next->next-> child->text);
+    if (vibro_force<30) vibro_force=30;
+    if (vibro_force>100) vibro_force=100;
+    if (vibro_interval<30) vibro_interval=30;
+    if (vibro_interval>150) vibro_interval=150;
+
+    exec_init  = strdup(root->child-> next->next->next->next->next-> child->child->child->text);
+    exec_final = strdup(root->child-> next->next->next->next->next-> child->child-> next-> child->text);
 
     json_free_value(&root);
 //-----------------------------------------------------------
@@ -174,8 +184,6 @@ void load_params()
     int j=0;
     while (level)
     {
-        //printf("*************level****************\n");
-
         json_t *box = level->child->  next->  child->child;
         int boxes_count = GetNodesCount(box);
         game_levels[i].boxes_count = boxes_count;
@@ -220,6 +228,26 @@ void load_params()
         json_t *init = level->child-> next->next->next->next-> child;
         game_levels[i].init.x = atoi(init->child->child->text);
         game_levels[i].init.y = atoi(init->child-> next-> child->text);
+
+        if (level->child-> next->next->next->next->next)
+        {
+            json_t *key = level->child-> next->next->next->next->next-> child->child;
+            int keys_count = GetNodesCount(key);
+            game_levels[i].keys_count = keys_count;
+            game_levels[i].keys = (Point*)malloc(sizeof(Point) * keys_count);
+            j=0;
+            while (key)
+            {
+                game_levels[i].keys[j].x = atoi(key->child->child->text);
+                game_levels[i].keys[j].y = atoi(key->child-> next-> child->text);
+                key = key->next;
+                j++;
+            }
+        }
+        else
+        {
+            game_levels[i].keys_count = 0;
+        }
 
         level = level->next;
         i++;
@@ -509,4 +537,13 @@ void SetUserCalX(float x)
 void SetUserCalY(float y)
 {
     user_set.cal_y = y;
+}
+
+int GetVibroForce()
+{
+    return vibro_force;
+}
+int GetVibroInterval()
+{
+    return vibro_interval;
 }

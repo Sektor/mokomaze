@@ -26,8 +26,9 @@
 #include <SDL/SDL.h>
 
 //#define MDIR ""
+//#define MDIR "data/"
+#define MDIR DATADIR "/mokomaze/"
 //#define MFONTDIR ""
-#define MDIR DATADIR"/mokomaze/"
 #define MFONTDIR FONTDIR "/"
 
 #define BYTE unsigned char
@@ -74,6 +75,7 @@ typedef struct {
 
 	int		ball_r;
 	int		hole_r;
+	int		key_r;
 
 	int		f_delay;
         int             fullscreen;
@@ -112,6 +114,9 @@ typedef struct {
 	Point*		fins;
 
 	Point		init;
+
+        int		keys_count;
+	Point*		keys;
 
 } Level;
 
