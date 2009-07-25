@@ -35,9 +35,12 @@ FILE* fvibro=NULL;
 SDL_TimerID vibro_timer=0;
 
 #define VIBRATION_TIME 33
+int vib_int = VIBRATION_TIME;
 
 int init_vibro()
 {
+    vib_int = VIBRATION_TIME * GetVibroInterval() / 100;
+
     fvibro = fopen("/sys/class/leds/neo1973:vibrator/brightness", "w");
     if (fvibro != NULL) return 0;
 
@@ -71,7 +74,7 @@ int set_vibro(BYTE level)
         {
             fprintf(fvibro, "%d", level);
             fflush(fvibro);
-            vibro_timer = SDL_AddTimer(VIBRATION_TIME, callback, NULL);
+            vibro_timer = SDL_AddTimer(vib_int, callback, NULL);
         }
     }
     return 0;
