@@ -52,10 +52,28 @@ int fullscreen;
 #define GAME_STATE_NORMAL   1
 #define GAME_STATE_FAILED   2
 #define GAME_STATE_WIN      3
+#define GAME_STATE_SAVED    4
 int game_state;
 int new_game_state;
 
 int LoadImgErrors=0;
+
+//==============================================================================
+
+#define ANIMATION_NONE      0
+#define ANIMATION_PLAYING   1
+#define ANIMATION_FINISHED  2
+typedef struct {
+
+	float		time;
+        int             stage;
+
+} Animation;
+
+Animation final_anim;
+Animation *keys_anim = NULL;
+int keys_passed = 0;
+int save_key = -1;
 
 //==============================================================================
 float calcdist(float x1,float y1, float x2,float y2)
@@ -97,6 +115,13 @@ int max(int a, int b)
     if (a>=b) return a; else return b;
 }
 
+float sign(float x)
+{
+    if (x<0) return -1;
+    if (x>0) return +1;
+    return 0;
+}
+
 void** alloc2d(int mi, int mj, int s, int su)
 {
     void **res;
@@ -113,6 +138,7 @@ void** alloc2d(int mi, int mj, int s, int su)
 #define PHYS_SCALE 100.0
 //----------------------
 
+float vibro_force_k=1;
 #define MAX_BUMP_SPEED 240.0
 #define MIN_BUMP_SPEED 70.0
 void BumpVibrate(float speed)
@@ -125,6 +151,7 @@ void BumpVibrate(float speed)
             float k = (speed-MIN_BUMP_SPEED)/(MAX_BUMP_SPEED-MIN_BUMP_SPEED);
             if (k>1) k=1;
             float lev = 0.27+0.73*k;
+            lev *= vibro_force_k;
             BYTE vlevel = (BYTE)(lev*255);
             set_vibro(vlevel);
         }
@@ -133,20 +160,35 @@ void BumpVibrate(float speed)
 
 
 int fall=0;
+int fall_fixed=0;
+Point fall_hole;
 void GoFall(Point hole);
 
-#define HOLE_SCALE 1.00
 int testbump(float x, float y)
 {
 
-    if (fall) return; //
-    
+    if (fall)
+    {
+        if (!fall_fixed)
+        {
+            if ( (x >= fall_hole.x-game_config.hole_r+game_config.ball_r) &&
+                 (x <= fall_hole.x+game_config.hole_r-game_config.ball_r) &&
+                 (y >= fall_hole.y-game_config.hole_r+game_config.ball_r) &&
+                 (y <= fall_hole.y+game_config.hole_r-game_config.ball_r) )
+                GoFallFixed(fall_hole);
+        }
+        return 0;
+    }
+
     Point final_hole = game_levels[cur_level].fins[0];
     float dist = calcdist(x,y, final_hole.x,final_hole.y);
-    if (dist <= game_config.hole_r * HOLE_SCALE)
+    if (dist <= game_config.hole_r)
     {
         GoFall(final_hole);
-        new_game_state = GAME_STATE_WIN;
+        if (keys_passed == game_levels[cur_level].keys_count) //
+            new_game_state = GAME_STATE_WIN;
+        else
+            new_game_state = GAME_STATE_SAVED;
         return 1;
     }
 
@@ -154,18 +196,46 @@ int testbump(float x, float y)
     {
         Point hole = game_levels[cur_level].holes[i];
         Box boundbox;
-        boundbox.x1 = hole.x - game_config.hole_r*HOLE_SCALE -1;
-        boundbox.y1 = hole.y - game_config.hole_r*HOLE_SCALE -1;
-        boundbox.x2 = hole.x + game_config.hole_r*HOLE_SCALE +1;
-        boundbox.y2 = hole.y + game_config.hole_r*HOLE_SCALE +1;
+        boundbox.x1 = hole.x - game_config.hole_r -1;
+        boundbox.y1 = hole.y - game_config.hole_r -1;
+        boundbox.x2 = hole.x + game_config.hole_r +1;
+        boundbox.y2 = hole.y + game_config.hole_r +1;
         if (inbox(x,y, boundbox))
         {
             float dist = calcdist(x,y, hole.x,hole.y);
-            if (dist <= game_config.hole_r * HOLE_SCALE)
+            if (dist <= game_config.hole_r)
             {
                 GoFall(hole);
                 new_game_state = GAME_STATE_FAILED;
                 return 1;
+            }
+        }
+    }
+
+    for (int i=0; i<game_levels[cur_level].keys_count; i++)
+    {
+        if (keys_anim[i].stage == ANIMATION_NONE)
+        {
+            Point key = game_levels[cur_level].keys[i];
+            Box boundbox;
+            boundbox.x1 = key.x - game_config.key_r -1;
+            boundbox.y1 = key.y - game_config.key_r -1;
+            boundbox.x2 = key.x + game_config.key_r +1;
+            boundbox.y2 = key.y + game_config.key_r +1;
+            if (inbox(x,y, boundbox))
+            {
+                float dist = calcdist(x,y, key.x,key.y);
+                if (dist <= game_config.key_r)
+                {
+                    keys_anim[i].stage = ANIMATION_PLAYING;
+                    keys_passed++;
+                    save_key = i;
+                    if (keys_passed == game_levels[cur_level].keys_count)
+                    {
+                        final_anim.stage = ANIMATION_PLAYING;
+                    }
+                    return 0;
+                }
             }
         }
     }
@@ -214,17 +284,7 @@ static void nearCallback(void *data, dGeomID o1, dGeomID o2)
         if ((o1!=plane) && (o2!=plane))
         {
             const dReal *Normal = contact[0].geom.normal;
-            //float nlen = calclen(Normal[0], Normal[1]);
-            //float n0=Normal[0]/nlen;
-            //float n1=Normal[1]/nlen;
-
             const dReal *LinearVel = dBodyGetLinearVel(body);
-            //float vlen = calclen(LinearVel[0], LinearVel[1]);
-            //float v0=LinearVel[0]/vlen;
-            //float v1=LinearVel[1]/vlen;
-
-            //float cosa = n0*v0 + n1*v1;
-            //float pvel = vlen*cosa;
 
             float vlen = sqrt(  LinearVel[0]*LinearVel[0] +
                                 LinearVel[1]*LinearVel[1] +
@@ -233,8 +293,6 @@ static void nearCallback(void *data, dGeomID o1, dGeomID o2)
                          Normal[1]*LinearVel[1] +
                          Normal[2]*LinearVel[2];
             float pvel = vlen*cosa;
-
-            //if (cosa<0) cosa=-cosa;
 
             BumpVibrate(-pvel*70);
         }
@@ -250,13 +308,14 @@ SDL_Rect desk_rect;
 BYTE *shadowbuf;
 float **hole_zeds;
 BYTE **hole_aa;
+BYTE **key_aa;
 
 void FillShadow(Box b)
 {
-    for (int y=b.y1; y<=b.y2; y++)
+    for (int y=b.y1; y<b.y2; y++)
     {
         int adr = game_config.wnd_w * y + b.x1;
-        for (int x=b.x1; x<=b.x2; x++)
+        for (int x=b.x1; x<b.x2; x++)
         {
             if ((y>=0)&&(y<screen->h)&&
                 (x>=0)&&(x<screen->w)) shadowbuf[adr]=1;
@@ -265,13 +324,45 @@ void FillShadow(Box b)
     }
 }
 
+/*
+void From16BitToColor(Uint16 col, BYTE *c0, BYTE *c1, BYTE *c2)
+{
+    *c2 = (BYTE)(col & 31);
+    *c1 = (BYTE)((col >> 5) & 63);
+    *c0 = (BYTE)((col >> 11) & 31);
+}
+*/
+
+Uint16 ColorTo16Bit(BYTE c0, BYTE c1, BYTE c2)
+{
+    return (c0<<11) | (c1<<5) | (c2);
+}
+
 Uint16 Shade16BitColor(Uint16 col, float k)
 {
+    k = 1-k;
     BYTE c0,c1,c2;
     c2 = (BYTE)((col & 31) * k);
     c1 = (BYTE)(((col >> 5) & 63) * k);
     c0 = (BYTE)(((col >> 11) & 31) * k);
-    return (c0<<11) | (c1<<5) | (c2);
+    return ColorTo16Bit(c0,c1,c2);
+}
+
+Uint16 Mix16BitColor(Uint16 col, SDL_Color mix, float k)
+{
+    BYTE fc0,fc1,fc2;
+    fc2 = (col & 31)*(1-k) + mix.b*k;
+    fc1 = ((col >> 5) & 63)*(1-k) + mix.g*k;
+    fc0 = ((col >> 11) & 31)*(1-k) + mix.r*k;
+    if (fc2>31) fc2=31;
+    if (fc1>63) fc1=63;
+    if (fc0>31) fc0=31;
+
+    BYTE c0,c1,c2;
+    c2 = (BYTE)fc2;
+    c1 = (BYTE)fc1;
+    c0 = (BYTE)fc0;
+    return ColorTo16Bit(c0,c1,c2);
 }
 
 void DrawHole(int x0, int y0, int r, float grayk, float shiftk)
@@ -303,9 +394,46 @@ void DrawHole(int x0, int y0, int r, float grayk, float shiftk)
                     if (aa_k>0)
                     {
                         Uint16 col = ((Uint16*)render_pic->pixels)[adr];
-                        col = Shade16BitColor(col, ((float)(16-aa_k)/16.0));
+                        col = Shade16BitColor(col, aa_k/16.0);
                         ((Uint16*)render_pic->pixels)[adr] = col;
                     }
+                }
+            }
+            adr++;
+        }
+    }
+}
+
+void DrawKey(int x0, int y0, int r, float anim)
+{
+    SDL_Color mix;
+    mix.r = (BYTE)( 6*(1.0-anim) + 28*anim);
+    mix.g = (BYTE)(24*(1.0-anim) + 28*anim);
+    mix.b = (BYTE)(18*(1.0-anim) +  0*anim);
+       
+    Uint16 def_color = ColorTo16Bit(mix.r, mix.g, mix.b);
+    for (int y=-r; y<=r; y++)
+    {
+        int adr = game_config.wnd_w*(y0+y) + (x0-r);
+        for (int x=-r; x<=r; x++)
+        {
+            if ((y0+y>=0)&&(y0+y<screen->h)&&
+                (x0+x>=0)&&(x0+x<screen->w))
+            {
+                BYTE aa_k = key_aa[x+r][y+r];
+                if (aa_k>0)
+                {
+                    Uint16 col;
+                    if (aa_k==16)
+                    {
+                        col = def_color;
+                    }
+                    else
+                    {
+                        col = ((Uint16*)screen->pixels)[adr];
+                        col = Mix16BitColor(col, mix, aa_k/16.0);
+                    }
+                    ((Uint16*)screen->pixels)[adr] = col;
                 }
             }
             adr++;
@@ -326,8 +454,27 @@ void RedrawDesk()
     SDL_BlitSurface(render_pic, &desk_rect, screen, &desk_rect);
 }
 
+void ZeroAnim()
+{
+    for (int i=0; i<game_levels[cur_level].keys_count; i++)
+    {
+        keys_anim[i].stage = ANIMATION_NONE;
+        keys_anim[i].time = 0;
+    }
+    final_anim.stage = ANIMATION_NONE;
+    final_anim.time = 0;
+
+    keys_passed = 0;
+    save_key = -1;
+}
+
 void RenderLevel()
 {
+    if (keys_anim) free(keys_anim);
+    keys_anim = (Animation*)malloc(game_levels[cur_level].keys_count * sizeof(Animation));
+
+    ZeroAnim();
+    
 //-- Prepare background --------------------------------------------------------
     SDL_BlitSurface(desk_pic, &desk_rect, render_pic, &desk_rect);
     for (int i=0; i<game_config.wnd_w*game_config.wnd_h; i++)
@@ -355,48 +502,48 @@ void RenderLevel()
 
         //light vertical lines
         y1 = max(bxs[i].y1-1, 0);
-        y2 = min(bxs[i].y2+1, game_config.wnd_h-1);
+        y2 = min(bxs[i].y2+0, game_config.wnd_h-1);
         x  = bxs[i].x1-1;
         if (x>=0)
             for (y=y1; y<=y2; y++)
                 TryToShadow(x,y,0.3);
-        x  = bxs[i].x2+1;
+        x  = bxs[i].x2+0;
         if (x<game_config.wnd_w)
             for (y=y1; y<=y2; y++)
                 TryToShadow(x,y,0.3);
 
         //light horisontal lines
         x1 = max(bxs[i].x1, 0);
-        x2 = min(bxs[i].x2, game_config.wnd_w-1);
+        x2 = min(bxs[i].x2-1, game_config.wnd_w-1);
         y  = bxs[i].y1-1;
         if (y>=0)
             for (x=x1; x<=x2; x++)
                 TryToShadow(x,y,0.3);
-        y  = bxs[i].y2+1;
+        y  = bxs[i].y2+0;
         if (y<game_config.wnd_h)
             for (x=x1; x<=x2; x++)
                 TryToShadow(x,y,0.3);
 
         //dark vertical lines
         y1 = max(bxs[i].y1-1, 0);
-        y2 = min(bxs[i].y2+1, game_config.wnd_h-1);
+        y2 = min(bxs[i].y2+0, game_config.wnd_h-1);
         x  = bxs[i].x1-2;
         if (x>=0)
             for (y=y1; y<=y2; y++)
                 TryToShadow(x,y,0.6);
-        x  = bxs[i].x2+2;
+        x  = bxs[i].x2+1;
         if (x<game_config.wnd_w)
             for (y=y1; y<=y2; y++)
                 TryToShadow(x,y,0.6);
 
         //dark horisontal lines
         x1 = max(bxs[i].x1-1, 0);
-        x2 = min(bxs[i].x2+1, game_config.wnd_w-1);
+        x2 = min(bxs[i].x2+0, game_config.wnd_w-1);
         y  = bxs[i].y1-2;
         if (y>=0)
             for (x=x1; x<=x2; x++)
                 TryToShadow(x,y,0.6);
-        y  = bxs[i].y2+2;
+        y  = bxs[i].y2+1;
         if (y<game_config.wnd_h)
             for (x=x1; x<=x2; x++)
                 TryToShadow(x,y,0.6);
@@ -417,12 +564,15 @@ void RenderLevel()
               game_config.hole_r,
               0.85, 0.50 );
 
-    SDL_Rect om_rect;
-    int om_x0 = game_levels[cur_level].fins[0].x - fin_pic->w/2;
-    int om_y0 = game_levels[cur_level].fins[0].y - fin_pic->h/2;
-    om_rect.x = om_x0; om_rect.y = om_y0;
-    om_rect.w = fin_pic->w; om_rect.h = fin_pic->h;
-    SDL_BlitSurface(fin_pic, NULL, render_pic, &om_rect);
+    if (game_levels[cur_level].keys_count == 0)
+    {
+        SDL_Rect om_rect;
+        int om_x0 = game_levels[cur_level].fins[0].x - fin_pic->w/2;
+        int om_y0 = game_levels[cur_level].fins[0].y - fin_pic->h/2;
+        om_rect.x = om_x0; om_rect.y = om_y0;
+        om_rect.w = fin_pic->w; om_rect.h = fin_pic->h;
+        SDL_BlitSurface(fin_pic, NULL, render_pic, &om_rect);
+    }
 //------------------------------------------------------------------------------
 }
 
@@ -442,6 +592,7 @@ void InitState()
     first_init = 0;
 
     fall = 0;
+    fall_fixed = 0;
 
     // create world
     world = dWorldCreate ();
@@ -456,8 +607,6 @@ void InitState()
 
     int b_co = game_levels[cur_level].boxes_count;
     Box *bxs = game_levels[cur_level].boxes;
-    //if (walls) free(walls);
-    //walls = malloc((b_co+5)*sizeof(dGeomID));
 
     for (int i=0; i<b_co; i++)
     {
@@ -493,14 +642,22 @@ void InitState()
     body = dBodyCreate (world);
     geom = dCreateSphere (space, game_config.ball_r/PHYS_SCALE);
     dMassSetSphere (&m,1,game_config.ball_r/PHYS_SCALE);
-    //geom = dCreateBox(space,0.5,0.5,0.5);
-    //dMassSetBox (&m,1,0.5,0.5,0.5);
     dBodySetMass (body,&m);
     dGeomSetBody (geom,body);
     // set initial position
-    dBodySetPosition ( body, px/PHYS_SCALE, py/PHYS_SCALE,
+    int ix,iy;
+    if (save_key<0)
+    {
+        ix = px;
+        iy = py;
+    }
+    else
+    {
+        ix = game_levels[cur_level].keys[save_key].x;
+        iy = game_levels[cur_level].keys[save_key].y;
+    }
+    dBodySetPosition ( body, ix/PHYS_SCALE, iy/PHYS_SCALE,
                        (game_config.ball_r/PHYS_SCALE)*(1+PHYS_BALL_SHIFT) );
-
 //------------------------------------------------------------------------------
 
     RedrawDesk();
@@ -542,6 +699,26 @@ void GoFall(Point hole)
     dGeomSetPosition(wall, (hole.x-game_config.hole_r-game_config.ball_r*3.0/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
 
     fall = 1;
+    fall_hole = hole;
+}
+
+void GoFallFixed(Point hole)
+{
+    dGeomID wall;
+
+    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_WALL_HEIGHT);
+    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y-game_config.hole_r-game_config.ball_r/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
+
+    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_WALL_HEIGHT);
+    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y+game_config.hole_r+game_config.ball_r/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
+
+    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
+    dGeomSetPosition(wall, (hole.x+game_config.hole_r+game_config.ball_r/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
+
+    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
+    dGeomSetPosition(wall, (hole.x-game_config.hole_r-game_config.ball_r/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
+
+    fall_fixed = 1;
 }
 
 
@@ -551,6 +728,18 @@ SDL_Surface* CreateSurface(Uint32 flags,int width,int height,const SDL_Surface* 
   return SDL_CreateRGBSurface(flags,width,height,
                   fmt.BitsPerPixel,
                   fmt.Rmask,fmt.Gmask,fmt.Bmask,fmt.Amask);
+}
+
+void DrawBlended(SDL_Surface* from, SDL_Surface* to, float k)
+{
+    for (int i=0; i<from->w*from->h; i++)
+    {
+        Uint32 c = ((Uint32*)from->pixels)[i];
+        BYTE a = ((c & from->format->Amask) >> from->format->Ashift) * k;
+        c &= ~from->format->Amask;
+        c |= a << from->format->Ashift;
+        ((Uint32*)to->pixels)[i] = c;
+    }
 }
 
 SDL_Surface* LoadImg(char *file)
@@ -652,7 +841,7 @@ float CalcDeterminant(float **mat, int order)
     {
         // get minor of element (0,i)
         GetMinor( mat, minor, 0, i , order);
-        // the recusion is here!
+        // the recursion is here!
         det += pow( -1.0, i ) * mat[0][i] * CalcDeterminant( minor,order-1 );
     }
 
@@ -820,7 +1009,7 @@ void DrawBall(int tk_px, int tk_py, float poss_z, const dReal *R, SDL_Color bcol
                 {
                     int adr = ((tk_py+y)*screen->w + (tk_px+x));
                     Uint16 col = ((Uint16*)screen->pixels)[adr];
-                    col = Shade16BitColor(col, ((float)(16-aa_k)/16.0));
+                    col = Shade16BitColor(col, aa_k/16.0);
                     ((Uint16*)screen->pixels)[adr] = col;
                 }
             }
@@ -828,6 +1017,154 @@ void DrawBall(int tk_px, int tk_py, float poss_z, const dReal *R, SDL_Color bcol
 
     if(SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
 }
+//------------------------------------------------------------------------------
+
+SDL_Surface *fin_pic_blended;
+#define MAX_ANIM_TIME 0.3
+void UpdateBufAnimation(float do_phys_step)
+{
+    int kx,ky,kr;
+    int hx,hy,hr;
+    SDL_Rect fin_rect, key_rect;
+
+    hx = game_levels[cur_level].fins[0].x;
+    hy = game_levels[cur_level].fins[0].y;
+    hr = game_config.hole_r;
+
+    fin_rect.x=hx-hr; fin_rect.y=hy-hr;
+    fin_rect.w=hr*2+1; fin_rect.h=hr*2+1;
+
+    //restore background around final hole
+    if (game_levels[cur_level].keys_count > 0)
+    if (keys_passed == game_levels[cur_level].keys_count)
+    {
+        SDL_BlitSurface(render_pic, &fin_rect, screen, &fin_rect);
+    }
+
+    //restore background around keys
+    for (int i=0; i<game_levels[cur_level].keys_count; i++)
+    {
+        kx = game_levels[cur_level].keys[i].x;
+        ky = game_levels[cur_level].keys[i].y;
+        kr = game_config.key_r;
+
+        key_rect.x=kx-kr; key_rect.y=ky-kr;
+        key_rect.w=kr*2+1; key_rect.h=kr*2+1;
+
+        SDL_BlitSurface(render_pic, &key_rect, screen, &key_rect);
+    }
+
+    //draw keys with actual animation stages
+    for (int i=0; i<game_levels[cur_level].keys_count; i++)
+    {
+        kx = game_levels[cur_level].keys[i].x;
+        ky = game_levels[cur_level].keys[i].y;
+        kr = game_config.key_r;
+
+        key_rect.x=kx-kr; key_rect.y=ky-kr;
+        key_rect.w=kr*2+1; key_rect.h=kr*2+1;
+
+        float kk;
+        if (keys_anim[i].stage == ANIMATION_NONE) kk=0;
+        else if (keys_anim[i].stage == ANIMATION_FINISHED) kk=1;
+        else if (keys_anim[i].stage == ANIMATION_PLAYING)
+        {
+            keys_anim[i].time += do_phys_step;
+            kk = keys_anim[i].time / MAX_ANIM_TIME;
+            if (kk>1) kk=1;
+        }
+        DrawKey( kx, ky, kr, kk );
+    }
+
+    //draw final hole with actual animation stage
+    if (game_levels[cur_level].keys_count > 0)
+    if (keys_passed == game_levels[cur_level].keys_count)
+    {
+        float kk=0;
+        if (final_anim.stage == ANIMATION_PLAYING)
+        {
+            final_anim.time += do_phys_step;
+            kk = final_anim.time / MAX_ANIM_TIME;
+            if (kk>1) kk=1;
+        }
+        else if (final_anim.stage == ANIMATION_FINISHED)
+        {
+            kk=1;
+        }
+
+        SDL_Rect om_rect;
+        om_rect.x = game_levels[cur_level].fins[0].x - fin_pic->w/2;
+        om_rect.y = game_levels[cur_level].fins[0].y - fin_pic->h/2;
+        om_rect.w = fin_pic->w; om_rect.h = fin_pic->h;
+
+        if (kk<1)
+        {
+            DrawBlended(fin_pic, fin_pic_blended, kk);
+            SDL_BlitSurface(fin_pic_blended, NULL, screen, &om_rect);
+        }
+        else
+        {
+            SDL_BlitSurface(fin_pic, NULL, screen, &om_rect);
+        }
+    }
+}
+
+void UpdateScreenAnimation()
+{
+    //updating animation on the screen
+    for (int i=0; i<game_levels[cur_level].keys_count; i++)
+    {
+        if (keys_anim[i].stage == ANIMATION_PLAYING)
+        {
+            int kx,ky,kr;
+            kx = game_levels[cur_level].keys[i].x;
+            ky = game_levels[cur_level].keys[i].y;
+            kr = game_config.key_r;
+
+            SDL_Rect key_rect;
+            key_rect.x=kx-kr; key_rect.y=ky-kr;
+            key_rect.w=kr*2+1; key_rect.h=kr*2+1;
+
+            SDL_UpdateRect(screen, key_rect.x, key_rect.y, key_rect.w, key_rect.h);
+            if (keys_anim[i].time >= MAX_ANIM_TIME) keys_anim[i].stage = ANIMATION_FINISHED;
+        }
+    }
+
+    if (final_anim.stage == ANIMATION_PLAYING)
+    {
+        SDL_Rect om_rect;
+        om_rect.x = game_levels[cur_level].fins[0].x - fin_pic->w/2;
+        om_rect.y = game_levels[cur_level].fins[0].y - fin_pic->h/2;
+        om_rect.w = fin_pic->w; om_rect.h = fin_pic->h;
+        SDL_UpdateRect(screen, om_rect.x, om_rect.y, om_rect.w, om_rect.h);
+        if (final_anim.time >= MAX_ANIM_TIME) final_anim.stage = ANIMATION_FINISHED;
+    }
+}
+
+//------------------------------------------------------------------------------
+
+int fastchange_step;
+SDL_TimerID fastchange_timer = 0;
+int must_fastchange = 0;
+int fastchange_dostep;
+#define FASTCHANGE_INTERVAL 1000
+Uint32 fastchange_callback (Uint32 interval, void *param)
+{
+    fastchange_dostep = fastchange_step;
+    must_fastchange = 1;
+    return interval;
+}
+
+void StopFastChange()
+{
+    if (fastchange_timer)
+    {
+        SDL_RemoveTimer(fastchange_timer);
+        fastchange_timer=0;
+    }
+    must_fastchange = 0;
+}
+
 //------------------------------------------------------------------------------
 
 #define FONT_NAME "LiberationMono-Regular.ttf"
@@ -841,6 +1178,7 @@ void render_window(int start_level)
         game_config = GetGameConfig();
         game_levels = GetGameLevels();
         game_levels_count = GetGameLevelsCount();
+        vibro_force_k = GetVibroForce()/100.0;
 
         //== font and labels ===================================================
         TTF_Font* font = TTF_OpenFont(MFONTDIR FONT_NAME, 24);
@@ -859,7 +1197,7 @@ void render_window(int start_level)
 #endif
 
         SDL_Surface *levelTextSurface, *infoTextSurface;
-        levelTextSurface = TTF_RenderText_Blended(font, "Level XX/YY", fontColor);
+        levelTextSurface = TTF_RenderText_Blended(font, "Level X/Y", fontColor);
         infoTextSurface  = TTF_RenderText_Blended(font, "Touch the screen to continue", fontColor);
         SDL_Rect levelTextLocation = {  (game_config.wnd_w - levelTextSurface->w) / 2,
                                         levelTextSurface->h * 2,
@@ -952,6 +1290,8 @@ void render_window(int start_level)
         SDL_Color ballColor;
         ballColor.r = 31; ballColor.g = 31; ballColor.b = 0;
 
+        fin_pic_blended = CreateSurface(SDL_SWSURFACE, fin_pic->w, fin_pic->h, fin_pic); // blended final image
+
         //init matrices for drawing the ball
         a = alloc2d(3,3,sizeof(float),sizeof(float*));
         a_1 = alloc2d(3,3,sizeof(float),sizeof(float*));
@@ -1009,6 +1349,35 @@ void render_window(int start_level)
             else hole_zeds[x+h_rad][y+h_rad] = -1;
         }
 
+        //alloc array for image of key
+        int k_rad = game_config.key_r;
+        int k_rad_v = k_rad*75/100;
+        int k_diam = k_rad*2 + 1;
+        key_aa = alloc2d(k_diam,k_diam,sizeof(BYTE),sizeof(BYTE*));
+        for (int x=-k_rad; x<=k_rad; x++)
+        for (int y=-k_rad; y<=k_rad; y++)
+        {
+            float xdist = x*x+y*y;
+            int sample_hit=0;
+
+            if ( (xdist>(k_rad+1)*(k_rad+1)) ||
+                 (xdist<(k_rad_v-1)*(k_rad_v-1)) ) sample_hit=0;
+            else if ( (xdist<(k_rad-1)*(k_rad-1)) &&
+                      (xdist>(k_rad_v+1)*(k_rad_v+1)) ) sample_hit=16;
+            else
+            {
+                for (int ii=0; ii<4; ii++)
+                    for (int jj=0; jj<4; jj++)
+                    {
+                        float rast = (x-0.3+0.2*ii)*(x-0.3+0.2*ii)+(y-0.3+0.2*jj)*(y-0.3+0.2*jj);
+                        if ( (rast <= k_rad*k_rad) && (rast >= k_rad_v*k_rad_v) )
+                            sample_hit++;
+                    }
+            }
+
+            key_aa[x+k_rad][y+k_rad] = sample_hit;
+        }
+
 
         /* Start the accelerometer thread */
 	accelerometer_start();
@@ -1043,6 +1412,10 @@ void render_window(int start_level)
                         mouse.x = event.motion.x;
                         mouse.y = event.motion.y;
                     }
+                    if (event.type == SDL_MOUSEBUTTONUP)
+                    {
+                        StopFastChange();
+                    }
                     if (event.type == SDL_MOUSEBUTTONDOWN)
                     {
                         if (!fullscreen)
@@ -1060,6 +1433,10 @@ void render_window(int start_level)
                                     game_state = GAME_STATE_NORMAL;
                                     first_draw=1;
                                     wasclick=1; //
+
+                                    fastchange_step = -10;
+                                    StopFastChange();
+                                    fastchange_timer = SDL_AddTimer(FASTCHANGE_INTERVAL, fastchange_callback, NULL);
                                 }
                                 continue;
                             }
@@ -1077,6 +1454,10 @@ void render_window(int start_level)
                                     game_state = GAME_STATE_NORMAL;
                                     first_draw=1;
                                     wasclick=1; //
+
+                                    fastchange_step = +10;
+                                    StopFastChange();
+                                    fastchange_timer = SDL_AddTimer(FASTCHANGE_INTERVAL, fastchange_callback, NULL);
                                 }
                                 continue;
                             }
@@ -1100,8 +1481,6 @@ void render_window(int start_level)
 
                             if (inbox(mouse.x,mouse.y, gui_box_4))
                             {
-                                //SDL_BlitSurface(exit_p_pic, NULL, screen, &gui_rect_4);
-                                //SDL_UpdateRect(screen, gui_rect_4.x,gui_rect_4.y,gui_rect_4.w,gui_rect_4.h);
                                 done=1;
                                 continue;
                             }
@@ -1130,7 +1509,38 @@ void render_window(int start_level)
                     } //if (event.type == SDL_MOUSEBUTTONDOWN)
 		}
 
-                if ((!fullscreen) && (!wasclick)) 
+                if ((!fullscreen) && (!wasclick) && (must_fastchange))
+                {
+                    int new_cur_level = cur_level + fastchange_dostep;
+                    if (new_cur_level > game_levels_count-1) new_cur_level = game_levels_count-1;
+                    if (new_cur_level < 0) new_cur_level = 0;
+
+                    if (new_cur_level != cur_level)
+                    {
+
+                        if (fastchange_dostep < 0)
+                        {
+                            SDL_BlitSurface(back_p_pic, NULL, screen, &gui_rect_1);
+                            SDL_UpdateRect(screen, gui_rect_1.x,gui_rect_1.y,gui_rect_1.w,gui_rect_1.h);
+                        }
+                        else
+                        {
+                            SDL_BlitSurface(forward_p_pic, NULL, screen, &gui_rect_2);
+                            SDL_UpdateRect(screen, gui_rect_2.x,gui_rect_2.y,gui_rect_2.w,gui_rect_2.h);
+                        }
+
+                        RedrawDesk();
+                        cur_level = new_cur_level;
+                        RenderLevel(); InitState();
+                        game_state = GAME_STATE_NORMAL;
+                        first_draw=1;
+                        wasclick=1; //
+
+                    }
+                    must_fastchange = 0;
+                }
+
+                if ((!fullscreen) && (!wasclick))
                 {
                     SDL_Delay(game_config.f_delay);
                     continue;
@@ -1158,6 +1568,10 @@ void render_window(int start_level)
                 float phys_step = (0.013/30.0) * delta_ticks;
                 if (prev_phys_step>0) phys_step = prev_phys_step + (phys_step - prev_phys_step) * 0.6;
                 prev_phys_step = phys_step;
+
+                float do_phys_step = phys_step;
+                if (do_phys_step > 0.013/30.0*250) do_phys_step = 0.013/30.0*250;
+                if (do_phys_step <= 0) do_phys_step = 0.013/30.0; //
 
                 int wnanc=0;
 
@@ -1214,13 +1628,28 @@ void render_window(int start_level)
                             if (AngularVel[2] < -0.003) qu= 1;
                             if (qu!=0) dBodyAddTorque(body, 0,0, qu*0.0005);
                         }
+                        else //fall
+                        {
+                            float cpx = Position[0]*PHYS_SCALE;
+                            float cpy = Position[1]*PHYS_SCALE;
+                            float tkdi = calcdist(fall_hole.x,fall_hole.y, cpx,cpy);
+                            if (tkdi > game_config.hole_r)
+                            {
+                                float tfx,tfy;
+                                float fo = 0.25 * (tkdi-game_config.hole_r) / (game_config.hole_r*(sqrt(2)-1));
+                                tfx = ((fall_hole.x - cpx) / tkdi) * fo;
+                                tfy = ((fall_hole.y - cpy) / tkdi) * fo;
+                                dBodyAddForce(body, tfx, tfy, 0);
+                                //printf("%.4f %.4f\n",tfx,tfy);
+                            }
+                        }
 
                         //======================================================
                         dSpaceCollide (space,0,&nearCallback);
                         //dWorldSetQuickStepNumIterations(world,20);
                         //dWorldQuickStep (world,0.01);
                         //dWorldStep (world,0.02);
-                        dWorldStep (world, phys_step);
+                        dWorldStep (world, do_phys_step);
                         dJointGroupEmpty (contactgroup);
                         //======================================================
 
@@ -1276,6 +1705,8 @@ void render_window(int start_level)
                 ball_rect.x=prev_px-game_config.ball_r; ball_rect.y=prev_py-game_config.ball_r;
                 SDL_BlitSurface(render_pic, &ball_rect, screen, &ball_rect);
 
+                UpdateBufAnimation(do_phys_step);
+
 //------------------------------------------------------------------------------
                 DrawBall(tk_px, tk_py, poss[2], R, ballColor);
 //------------------------------------------------------------------------------
@@ -1315,6 +1746,8 @@ void render_window(int start_level)
                     if (min_py<0) min_py=0;
                     if (max_py>=game_config.wnd_h) max_py=game_config.wnd_h-1;
                     SDL_UpdateRect(screen, min_px, min_py, max_px-min_px, max_py-min_py);
+
+                    UpdateScreenAnimation();
                 }
 
                 prev_px=tk_px; prev_py=tk_py;
@@ -1323,9 +1756,10 @@ void render_window(int start_level)
                 if ((wasclick) && (!fullscreen))
                 {
                     char txt[32];
-                    sprintf(txt, "Level %2d/%2d", cur_level+1, game_levels_count);
+                    sprintf(txt, "Level %d/%d", cur_level+1, game_levels_count);
                     SDL_FreeSurface(levelTextSurface);
                     levelTextSurface = TTF_RenderText_Blended(font, txt, fontColor);
+                    levelTextLocation.x = (game_config.wnd_w - levelTextSurface->w) / 2;
                     SDL_BlitSurface(levelTextSurface, NULL, screen, &levelTextLocation);
                     SDL_BlitSurface(infoTextSurface, NULL, screen, &infoTextLocation);
                     
@@ -1345,7 +1779,6 @@ void render_window(int start_level)
                         SDL_BlitSurface(reset_i_pic, NULL, screen, &gui_rect_3);
 
                     SDL_BlitSurface(exit_pic, NULL, screen, &gui_rect_4);
-                    //SDL_Flip(screen);
                     first_draw=1;
                 }
 
@@ -1358,7 +1791,14 @@ void render_window(int start_level)
 
                 if (game_state == GAME_STATE_FAILED)
                 {
-                    //RedrawDesk();
+                    ZeroAnim();
+                    InitState();
+                    game_state = GAME_STATE_NORMAL;
+                    first_draw=1;
+                }
+
+                if (game_state == GAME_STATE_SAVED)
+                {
                     InitState();
                     game_state = GAME_STATE_NORMAL;
                     first_draw=1;
@@ -1366,7 +1806,6 @@ void render_window(int start_level)
 
                 if (game_state == GAME_STATE_WIN)
                 {
-                    //RedrawDesk();
                     if (cur_level == game_levels_count-1)
                     {
                         cur_level=0;
