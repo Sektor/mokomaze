@@ -50,7 +50,7 @@ double acx=0,acy=0,acz=0;
 int recv_data=0;
 Prompt arguments;
 
-#define GET_DATA_INTERVAL 25000
+#define GET_DATA_INTERVAL 12500 //25000
 #define WAIT_DATA_TIME 1500000
 #define CALIBR_COUNT 60
 
@@ -416,6 +416,9 @@ int accelerometer_moo_freerunner(AccelHandle *accel)
 	acx = accel->x/1000.0;
 	acy = accel->y/1000.0;
 	acz = accel->z/1000.0;
+
+        if (acx<-1) acx=-1; if (acx>1) acx=1;
+        if (acy<-1) acy=-1; if (acy>1) acy=1;
 
         if ((arguments.cal_auto) && (!calibrated))
             if (calibr_val_count < CALIBR_COUNT)
