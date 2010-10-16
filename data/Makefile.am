@@ -19,3 +19,5 @@ dist_desktop_DATA = mokomaze.desktop
 #
 appicondir = $(datadir)/pixmaps
 dist_appicon_DATA = mokomaze.png
+
+MAINTAINERCLEANFILES = Makefile.in
