@@ -33,6 +33,7 @@ AM_CONDITIONAL(RGBSWAP, test x$use_rgb_swap != xno)
 AC_CONFIG_FILES([
 Makefile
 src/Makefile
+doc/Makefile
 data/Makefile
 ])
 AC_OUTPUT

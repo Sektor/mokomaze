@@ -1,0 +1,39 @@
+.TH Mokomaze "6" "July 2009" "0.5.0" "Games"
+.SH NAME
+Mokomaze \- ball\-in\-the\-labyrinth game
+.SH SYNOPSIS
+.B mokomaze
+[\fB-i\fR \fIinput_device_type\fR] [\fB-l\fR \fIlevel_number\fR] [\fB-c\fR \fIoption\fR]
+.SH OPTIONS
+.PP
+\fB\-i\fR \fIinput_device_type\fR, \fB\-\-input\fR \fIinput_device_type\fR
+.IP
+It is used to determine input device type manually. Currently
+supported values is '\fBfreerunner\fR' (to use Freerunner's
+accelerometer) and '\fBkeyboard\fR'.
+.PP
+\fB\-l\fR \fIlevel_number\fR, \fB\-\-level\fR \fIlevel_number\fR
+.IP
+It specifies a level from which the game will be started.
+Levels are counted from 1.
+.PP
+\fB\-c\fR \fIoption\fR, \fB\-\-calibrate\fR \fIoption\fR
+.IP
+It is used to perform the accelerometer calibration
+('\fBauto\fR' option) or to reset calibration data ('\fBreset\fR' option).
+.SH EXAMPLES
+mokomaze
+.PP
+mokomaze \fB\-l\fR 5
+.PP
+mokomaze \fB\-i\fR freerunner
+.PP
+mokomaze \fB\-i\fR keyboard \fB\-l\fR 2
+.PP
+mokomaze \fB\-c\fR auto
+.PP
+mokomaze \fB\-c\fR reset
+.PP
+.SH AUTHOR
+This   manual   page   was  written  by  Joachim Breitner <nomeata@debian.org>
+for the Debian system (but may be used by others).
