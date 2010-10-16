@@ -1,5 +1,5 @@
 AC_PREREQ(2.53)
-AC_INIT(mokomaze, 0.5, http://mokomaze.projects.openmoko.org/)
+AC_INIT(mokomaze, 0.5.5+, http://mokomaze.projects.openmoko.org/)
 AM_INIT_AUTOMAKE()
 AC_CONFIG_SRCDIR(src/main.c)
 AC_CONFIG_HEADERS(config.h)
