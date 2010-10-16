@@ -1,6 +1,4 @@
-INCLUDES = -I$(top_srcdir)
-
-AM_CPPFLAGS = \
+AM_CPPFLAGS = -I$(top_srcdir) \
   -DDATADIR=\""$(datadir)"\" -D_GNU_SOURCE \
   -DPIXMAPDIR=\""$(datadir)/pixmaps"\" \
   -DFONTDIR=\""@MAZEFONTDIR@"\"
