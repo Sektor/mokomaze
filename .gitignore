@@ -1,0 +1,17 @@
+*.o
+INSTALL
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache
+config.h*
+config.log
+config.status
+configure
+depcomp
+install-sh
+missing
+.deps
+stamp-h1
+mokomaze
+mokomaze-*.tar.gz
