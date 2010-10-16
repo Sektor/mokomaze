@@ -16,7 +16,8 @@ bin_PROGRAMS = mokomaze
 
 # add the sources to compile for the application
 mokomaze_SOURCES = \
-  main.c mainwindow.c paramsloader.c accelerometers.c vibro.c json.c
+  main.c mainwindow.c paramsloader.c accelerometers.c vibro.c json.c \
+  types.h mainwindow.h paramsloader.h accelerometers.h vibro.h json.h
 
 mokomaze_LDADD  = @SDL_LIBS@
 
