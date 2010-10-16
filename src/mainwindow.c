@@ -163,6 +163,7 @@ int fall=0;
 int fall_fixed=0;
 Point fall_hole;
 void GoFall(Point hole);
+void GoFallFixed(Point hole);
 
 int testbump(float x, float y)
 {
@@ -407,6 +408,7 @@ void DrawHole(int x0, int y0, int r, float grayk, float shiftk)
 void DrawKey(int x0, int y0, int r, float anim)
 {
     SDL_Color mix;
+    mix.unused = 0;
     mix.r = (BYTE)( 6*(1.0-anim) + 28*anim);
     mix.g = (BYTE)(24*(1.0-anim) + 28*anim);
     mix.b = (BYTE)(18*(1.0-anim) +  0*anim);
@@ -910,8 +912,8 @@ void DrawBall(int tk_px, int tk_py, float poss_z, const dReal *R, SDL_Color bcol
             float z;
 
             if ((tk_py+y>=0)&&(tk_py+y<screen->h)&&
-                (tk_px+x>=0)&&(tk_px+x<screen->w))
-            if ((z = zeds[x+rad][y+rad]) >= 0)
+                (tk_px+x>=0)&&(tk_px+x<screen->w)&&
+                (z = zeds[x+rad][y+rad]) >= 0)
             {
                     float ksi,fi;
                     float x0,y0,z0;
@@ -1064,7 +1066,7 @@ void UpdateBufAnimation(float do_phys_step)
         key_rect.x=kx-kr; key_rect.y=ky-kr;
         key_rect.w=kr*2+1; key_rect.h=kr*2+1;
 
-        float kk;
+        float kk = 0;
         if (keys_anim[i].stage == ANIMATION_NONE) kk=0;
         else if (keys_anim[i].stage == ANIMATION_FINISHED) kk=1;
         else if (keys_anim[i].stage == ANIMATION_PLAYING)
@@ -1293,14 +1295,14 @@ void render_window(int start_level)
         fin_pic_blended = CreateSurface(SDL_SWSURFACE, fin_pic->w, fin_pic->h, fin_pic); // blended final image
 
         //init matrices for drawing the ball
-        a = alloc2d(3,3,sizeof(float),sizeof(float*));
-        a_1 = alloc2d(3,3,sizeof(float),sizeof(float*));
+        a = (float**)alloc2d(3,3,sizeof(float),sizeof(float*));
+        a_1 = (float**)alloc2d(3,3,sizeof(float),sizeof(float*));
         
         //alloc ball z-values array
         rad = game_config.ball_r-1; //
         int diam = rad*2 + 1;
-        zeds = alloc2d(diam,diam,sizeof(float),sizeof(float*));
-        ball_aa = alloc2d(diam,diam,sizeof(BYTE),sizeof(BYTE*));
+        zeds = (float**)alloc2d(diam,diam,sizeof(float),sizeof(float*));
+        ball_aa = (BYTE**)alloc2d(diam,diam,sizeof(BYTE),sizeof(BYTE*));
         //calculate z-values
         for (int x=-rad; x<=rad; x++)
         for (int y=-rad; y<=rad; y++)
@@ -1326,8 +1328,8 @@ void render_window(int start_level)
         //alloc hole z-values array
         int h_rad = game_config.hole_r;
         int h_diam = h_rad*2 + 1;
-        hole_zeds = alloc2d(h_diam,h_diam,sizeof(float),sizeof(float*));
-        hole_aa = alloc2d(h_diam,h_diam,sizeof(BYTE),sizeof(BYTE*));
+        hole_zeds = (float**)alloc2d(h_diam,h_diam,sizeof(float),sizeof(float*));
+        hole_aa = (BYTE**)alloc2d(h_diam,h_diam,sizeof(BYTE),sizeof(BYTE*));
         for (int x=-h_rad; x<=h_rad; x++)
         for (int y=-h_rad; y<=h_rad; y++)
         {
@@ -1353,7 +1355,7 @@ void render_window(int start_level)
         int k_rad = game_config.key_r;
         int k_rad_v = k_rad*75/100;
         int k_diam = k_rad*2 + 1;
-        key_aa = alloc2d(k_diam,k_diam,sizeof(BYTE),sizeof(BYTE*));
+        key_aa = (BYTE**)alloc2d(k_diam,k_diam,sizeof(BYTE),sizeof(BYTE*));
         for (int x=-k_rad; x<=k_rad; x++)
         for (int y=-k_rad; y<=k_rad; y++)
         {
@@ -1603,8 +1605,7 @@ void render_window(int start_level)
                             xQuaternion[j] = Quaternion[j];
 
                         //if (i==0)
-                        if (!wnanc)
-                        if (!fall)
+                        if (!wnanc && !fall)
                         {
                             dBodyAddForce(body, forcex, 0, 0);
                             dBodyAddForce(body, 0, forcey, 0);
@@ -1690,7 +1691,7 @@ void render_window(int start_level)
 
                 if (fall)
                 {
-                    dReal *lv = dBodyGetLinearVel(body);
+                    const dReal *lv = dBodyGetLinearVel(body);
                     //printf ("%f %f %f\n",lv[0],lv[1],lv[2]);
                     if ( sqrt(lv[0]*lv[0]+lv[1]*lv[1]+lv[2]*lv[2]) < PHYS_MIN_FALL_VEL )
                         if (poss[2]*PHYS_SCALE <= -game_config.ball_r*3.0/4.0)

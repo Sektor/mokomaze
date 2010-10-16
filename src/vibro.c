@@ -29,6 +29,7 @@
 #include <sys/select.h>
 #include <fcntl.h>
 
+#include "paramsloader.h"
 #include "vibro.h"
 
 FILE* fvibro=NULL;

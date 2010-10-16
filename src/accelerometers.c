@@ -421,6 +421,7 @@ int accelerometer_moo_freerunner(AccelHandle *accel)
         if (acy<-1) acy=-1; if (acy>1) acy=1;
 
         if ((arguments.cal_auto) && (!calibrated))
+        {
             if (calibr_val_count < CALIBR_COUNT)
             {
                 mid_acx += asin(acx);
@@ -438,6 +439,7 @@ int accelerometer_moo_freerunner(AccelHandle *accel)
                 calibrated = 1;
                 printf("Accelerometer: gravity calibrated (%.2f deg; %.2f deg)\n", zero_asin_acx*180.0/M_PI, zero_asin_acy*180.0/M_PI);
             }
+        }
 
         if ((zero_asin_acx!=0) || (zero_asin_acy!=0))
         {
