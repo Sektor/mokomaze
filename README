@@ -14,42 +14,6 @@ Benefits:
  * high performance and low resource consumption
  * simple levelpack file format
 
-Building and installation:
---------------------------
-As usual:
-  $ ./configure
-  $ make
-  # make install
-The program uses "LiberationMono-Regular.ttf" font
-(from package "ttf-liberation") which is usually placed in directory
-"/usr/share/fonts/truetype/ttf-liberation". This path is configurable
-via FONTDIR parameter for ./configure. E.g.:
-  $ ./configure FONTDIR=/some/directory
-libsdl, libsdl-image, libsdl-ttf and libode are also needed for
-compilation. There is also --enable-rgb-swap option for ./configure
-that may help to avoid font color swapping (specific to various
-libsdl builds) which is assumed to be yellow-orange, not blue.
-
-For cross-compiling, first set up the environment to use your toolchain
-and pass architecture name to ./configure. For example, to compile the
-game for Neo Freerunner with Openmoko Toolchain execute
-  $ . /usr/local/openmoko/arm/setup-env
-then install needed development packages if you have not done it
-earlier:
-  $ opkg-target update #unnecessary
-  $ opkg-target install libsdl-1.2-dev
-  $ opkg-target install libsdl-image-1.2-dev
-  $ opkg-target install libsdl-ttf-dev
-Configure the project and compile it
-  $ ./configure --host=arm-angstrom-linux-gnueabi --prefix=/usr \
-  > --enable-rgb-swap FONTDIR=/usr/share/fonts/truetype
-  $ make
-To create .ipk file execute
-  $ cd ..
-  $ om-make-ipkg <mokomaze-src-dir> <control-file>
-Now copy installation package to Freerunner or memory card and
-install it by 'opkg install'.
-
 Running:
 --------
 Click on Mokomaze logo on home screen or application menu or run it
