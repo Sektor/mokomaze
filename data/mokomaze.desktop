@@ -1,8 +1,6 @@
 [Desktop Entry]
 Name=Mokomaze
 Comment=Ball-in-the-labyrinth game
-Encoding=UTF-8
-Version=0.5
 Type=Application
 Exec=mokomaze
 Terminal=false
