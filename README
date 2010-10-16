@@ -85,7 +85,7 @@ Levelpack file format:
 Levelpack file written in json and have simple structure. There are some
 game levels in the file. Each level consists of "boxes" (walls),
 "holes" and "checkpoints". Boxes are specified by 2 points:
-  (x1,y1) - top left point in current screen coordinate system 
+  (x1,y1) - top left point in current screen coordinate system
             (Mokomaze does not change screen parameters)
   (x2,y2) - bottom right point
 
