@@ -42,6 +42,12 @@ int init_vibro()
 {
     vib_int = VIBRATION_TIME * GetVibroInterval() / 100;
 
+    fvibro = fopen("/sys/class/leds/gta02::vibrator/brightness", "w");
+    if (fvibro != NULL) return 0;
+
+    fvibro = fopen("/sys/devices/platform/leds_pwm/leds/gta02::vibrator/brightness", "w");
+    if (fvibro != NULL) return 0;
+
     fvibro = fopen("/sys/class/leds/neo1973:vibrator/brightness", "w");
     if (fvibro != NULL) return 0;
 
