@@ -114,6 +114,12 @@ static FILE *accelerometer_freerunner_open_threshold(const char *mode)
 		return fh;
 	}
 
+	/* Try 2.6.34+ method */
+	fh = fopen("/sys/devices/platform/spi_s3c24xx_gpio.0/spi3.1/threshold", mode);
+	if ( fh != NULL ) {
+		return fh;
+	}
+
         return NULL;
 }
 
@@ -267,7 +273,7 @@ AccelHandle *accelerometer_open()
 
         if ( !((arguments.accel_set) && (arguments.accel != ACCEL_FREERUNNER)) )
         {
-            #define FREERUNNER_FILE "/dev/input/event3"
+            #define FREERUNNER_FILE "/dev/input/event4"
             if (stat(FREERUNNER_FILE, &st) == 0)
             {
                 accel->fd = open(FREERUNNER_FILE, O_RDONLY, O_NONBLOCK); //, O_RDONLY, 0);
