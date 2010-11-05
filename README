@@ -1,10 +1,10 @@
                                Mokomaze
 
-                  Copyright (C) 2009 Anton Olkhovik
+               Copyright (C) 2009-2010 Anton Olkhovik
                          <ant007h@gmail.com>
 ======================================================================
 
-Mokomaze is the opensource implementation of the classic game where
+Mokomaze is an open source implementation of the classic game where
 you control a steel ball by tilting a wooden labyrinth. It is
 written in C using SDL and adapted for Neo Freerunner.
 
@@ -12,11 +12,11 @@ Benefits:
  * controlled by accelerometer
  * simulates (by vibration) feedback from ball hits against the walls
  * high performance and low resource consumption
- * simple levelpack file format
+ * simple level pack file format
 
-Running:
---------
-Click on Mokomaze logo on home screen or application menu or run it
+Running
+-------
+Click on Mokomaze logo on the home screen or application menu or run it
 from the terminal by typing
   $ mokomaze
 Some parameters can also be passed to it:
@@ -26,11 +26,11 @@ Some parameters can also be passed to it:
         supported values is 'freerunner' (to use Freerunner's
         accelerometer) and 'keyboard'.
     -l, --level
-        It specifies a level from which the game will be started.
+        Specifies a level from which the game will be started.
         Levels are counted from 1.
     -c, --calibrate
-        It is used to perform the accelerometer calibration
-        ('auto' option) or to reset calibration data ('reset' option).
+        Performs the accelerometer calibration ('auto' option)
+        or resets the calibration data ('reset' option).
     Examples:
         mokomaze
         mokomaze -l 5
@@ -39,15 +39,15 @@ Some parameters can also be passed to it:
         mokomaze -c auto
         mokomaze -c reset
 
-Playing:
---------
+Playing
+-------
 Control the ball by tilting your Freerunner. Reach the exit, marked by
 Openmoko logo, avoiding other holes.
 
-Levelpack file format:
-------------------
-Levelpack file written in json and have simple structure. There are some
-game levels in the file. Each level consists of "boxes" (walls),
+Level pack file format
+----------------------
+Level pack file is written in JSON and has a simple structure. There are
+several game levels in the file. Each level consists of "boxes" (walls),
 "holes" and "checkpoints". Boxes are specified by 2 points:
   (x1,y1) - top left point in current screen coordinate system
             (Mokomaze does not change screen parameters)

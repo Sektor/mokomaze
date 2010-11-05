@@ -1,6 +1,7 @@
-Building and installation:
---------------------------
+Building and installation
+-------------------------
 As usual:
+  $ ./autogen.sh #if necessary
   $ ./configure
   $ make
   # make install
@@ -20,7 +21,7 @@ game for Neo Freerunner with Openmoko Toolchain execute
   $ . /usr/local/openmoko/arm/setup-env
 then install needed development packages if you have not done it
 earlier:
-  $ opkg-target update #unnecessary
+  $ opkg-target update #if necessary
   $ opkg-target install libsdl-1.2-dev
   $ opkg-target install libsdl-image-1.2-dev
   $ opkg-target install libsdl-ttf-dev
