@@ -907,107 +907,109 @@ void DrawBall(int tk_px, int tk_py, float poss_z, const dReal *R, SDL_Color bcol
             float z;
 
             if ((tk_py+y>=0)&&(tk_py+y<screen->h)&&
-                (tk_px+x>=0)&&(tk_px+x<screen->w)&&
-                (z = zeds[x+rad][y+rad]) >= 0)
+                (tk_px+x>=0)&&(tk_px+x<screen->w))
             {
-                    float ksi,fi;
-                    float x0,y0,z0;
-
-                    x0 = a_1[0][0]*x + a_1[1][0]*y +a_1[2][0]*z;
-                    y0 = a_1[0][1]*x + a_1[1][1]*y +a_1[2][1]*z;
-                    z0 = a_1[0][2]*x + a_1[1][2]*y +a_1[2][2]*z;
-
-                    ksi = (float)z0/rad;
-                    
-                    if (x0!=0) fi  = (float)y0/x0;
-                          else fi  = 0;
-
-                    float fip;
-                    if (y0!=0) fip  = (float)x0/y0;
-                          else fip  = 0;
-
-                    #define COS_PI_4   0.7071
-                    #define COS_PI_2   0
-                    #define COS_3PI_4 -COS_PI_4
-
-                    float ksim = ksi - COS_PI_2;
-                    SDL_Color secc;
-
-                    if (ksi>=COS_PI_2)
-                    {
-                        if (fi<=0)
-                        {
-                            c0=bcolor.r; c1=bcolor.g; c2=bcolor.b;
-                            secc.r=31; secc.g=63; secc.b=31;
-                        }
-                        else
-                        {
-                            c0=31; c1=63; c2=31;
-                            secc.r=bcolor.r; secc.g=bcolor.g; secc.b=bcolor.b;
-                        }
-                    }
-                    else
-                    {
-                        if (fi<=0)
-                        {
-                            c0=31; c1=63; c2=31;
-                            secc.r=bcolor.r; secc.g=bcolor.g; secc.b=bcolor.b;
-                        }
-                        else
-                        {
-                            c0=bcolor.r; c1=bcolor.g; c2=bcolor.b;
-                            secc.r=31; secc.g=63; secc.b=31;
-                        }
-                    }
-
-                    if ((fi<0.04) && (fi>=0.0))
-                        texSmooth(&c0,&c1,&c2, secc, fi/0.08);
-                    else
-                    if ((fi>-0.04) && (fi<0.0))
-                        texSmooth(&c0,&c1,&c2, secc, -fi/0.08);
-                    else
-
-                    if ((ksim<0.02) && (ksim>=0.0))
-                        texSmooth(&c0,&c1,&c2, secc, ksim/0.04);
-                    else
-                    if ((ksim>-0.02) && (ksim<0.0))
-                        texSmooth(&c0,&c1,&c2, secc, -ksim/0.04);
-                    else
-
-                    if ((fip<0.04) && (fip>=0.0))
-                        texSmooth(&c0,&c1,&c2, secc, fip/0.08);
-                    else
-                    if ((fip>-0.04) && (fip<0.0))
-                        texSmooth(&c0,&c1,&c2, secc, -fip/0.08);
-
-                    //float cosa = z/rad;
-                    //if (cosa<0) cosa=0;
-
-                    //shader
-                    float mz = (rad-poss_z*PHYS_SCALE);
-                    if (mz>0.6*rad) mz=0.6*rad;
-                    if (mz<0) mz=0;
-                    float cosa = (z-mz)/rad;
-                    if (cosa<0) cosa=0;
-                    //if (cosa>1) cosa=1;
-
-                    c0 = (BYTE)((float)c0*cosa);
-                    c1 = (BYTE)((float)c1*cosa);
-                    c2 = (BYTE)((float)c2*cosa);
-
-                    int adr = ((tk_py+y)*screen->w + (tk_px+x));
-                    Uint16 col = (c0<<11) | (c1<<5) | (c2);
-                    ((Uint16*)screen->pixels)[adr] = col;
-            }
-            else
-            {
-                BYTE aa_k = ball_aa[x+rad][y+rad];
-                if (aa_k>0)
+                if ((z = zeds[x+rad][y+rad]) >= 0)
                 {
-                    int adr = ((tk_py+y)*screen->w + (tk_px+x));
-                    Uint16 col = ((Uint16*)screen->pixels)[adr];
-                    col = Shade16BitColor(col, aa_k/16.0);
-                    ((Uint16*)screen->pixels)[adr] = col;
+                        float ksi,fi;
+                        float x0,y0,z0;
+
+                        x0 = a_1[0][0]*x + a_1[1][0]*y +a_1[2][0]*z;
+                        y0 = a_1[0][1]*x + a_1[1][1]*y +a_1[2][1]*z;
+                        z0 = a_1[0][2]*x + a_1[1][2]*y +a_1[2][2]*z;
+
+                        ksi = (float)z0/rad;
+
+                        if (x0!=0) fi  = (float)y0/x0;
+                              else fi  = 0;
+
+                        float fip;
+                        if (y0!=0) fip  = (float)x0/y0;
+                              else fip  = 0;
+
+                        #define COS_PI_4   0.7071
+                        #define COS_PI_2   0
+                        #define COS_3PI_4 -COS_PI_4
+
+                        float ksim = ksi - COS_PI_2;
+                        SDL_Color secc;
+
+                        if (ksi>=COS_PI_2)
+                        {
+                            if (fi<=0)
+                            {
+                                c0=bcolor.r; c1=bcolor.g; c2=bcolor.b;
+                                secc.r=31; secc.g=63; secc.b=31;
+                            }
+                            else
+                            {
+                                c0=31; c1=63; c2=31;
+                                secc.r=bcolor.r; secc.g=bcolor.g; secc.b=bcolor.b;
+                            }
+                        }
+                        else
+                        {
+                            if (fi<=0)
+                            {
+                                c0=31; c1=63; c2=31;
+                                secc.r=bcolor.r; secc.g=bcolor.g; secc.b=bcolor.b;
+                            }
+                            else
+                            {
+                                c0=bcolor.r; c1=bcolor.g; c2=bcolor.b;
+                                secc.r=31; secc.g=63; secc.b=31;
+                            }
+                        }
+
+                        if ((fi<0.04) && (fi>=0.0))
+                            texSmooth(&c0,&c1,&c2, secc, fi/0.08);
+                        else
+                        if ((fi>-0.04) && (fi<0.0))
+                            texSmooth(&c0,&c1,&c2, secc, -fi/0.08);
+                        else
+
+                        if ((ksim<0.02) && (ksim>=0.0))
+                            texSmooth(&c0,&c1,&c2, secc, ksim/0.04);
+                        else
+                        if ((ksim>-0.02) && (ksim<0.0))
+                            texSmooth(&c0,&c1,&c2, secc, -ksim/0.04);
+                        else
+
+                        if ((fip<0.04) && (fip>=0.0))
+                            texSmooth(&c0,&c1,&c2, secc, fip/0.08);
+                        else
+                        if ((fip>-0.04) && (fip<0.0))
+                            texSmooth(&c0,&c1,&c2, secc, -fip/0.08);
+
+                        //float cosa = z/rad;
+                        //if (cosa<0) cosa=0;
+
+                        //shader
+                        float mz = (rad-poss_z*PHYS_SCALE);
+                        if (mz>0.6*rad) mz=0.6*rad;
+                        if (mz<0) mz=0;
+                        float cosa = (z-mz)/rad;
+                        if (cosa<0) cosa=0;
+                        //if (cosa>1) cosa=1;
+
+                        c0 = (BYTE)((float)c0*cosa);
+                        c1 = (BYTE)((float)c1*cosa);
+                        c2 = (BYTE)((float)c2*cosa);
+
+                        int adr = ((tk_py+y)*screen->w + (tk_px+x));
+                        Uint16 col = (c0<<11) | (c1<<5) | (c2);
+                        ((Uint16*)screen->pixels)[adr] = col;
+                }
+                else
+                {
+                    BYTE aa_k = ball_aa[x+rad][y+rad];
+                    if (aa_k>0)
+                    {
+                        int adr = ((tk_py+y)*screen->w + (tk_px+x));
+                        Uint16 col = ((Uint16*)screen->pixels)[adr];
+                        col = Shade16BitColor(col, aa_k/16.0);
+                        ((Uint16*)screen->pixels)[adr] = col;
+                    }
                 }
             }
     }
@@ -1600,43 +1602,46 @@ void render_window(int start_level)
                             xQuaternion[j] = Quaternion[j];
 
                         //if (i==0)
-                        if (!wnanc && !fall)
+                        if (!wnanc)
                         {
-                            dBodyAddForce(body, forcex, 0, 0);
-                            dBodyAddForce(body, 0, forcey, 0);
-
-                            //printf("%.4f  %.4f  %.4f\n", LinearVel[0], LinearVel[1], LinearVel[2]);
-                            //printf("%.4f  %.4f  %.4f\n", AngularVel[0], AngularVel[1], AngularVel[2]);
-                            float qu;
-
-                            qu=0;
-                            if (LinearVel[0] >  0.002) qu=-1;
-                            if (LinearVel[0] < -0.002) qu= 1;
-                            if (qu!=0) dBodyAddForce(body, qu*0.0017*( 0.5*GRAV_CONST*cos(asin(ax)) ), 0, 0);
-
-                            qu=0;
-                            if (LinearVel[1] >  0.002) qu=-1;
-                            if (LinearVel[1] < -0.002) qu= 1;
-                            if (qu!=0) dBodyAddForce(body, 0, qu*0.0017*( 0.5*GRAV_CONST*cos(asin(ay)) ), 0);
-
-                            qu=0;
-                            if (AngularVel[2] >  0.003) qu=-1;
-                            if (AngularVel[2] < -0.003) qu= 1;
-                            if (qu!=0) dBodyAddTorque(body, 0,0, qu*0.0005);
-                        }
-                        else //fall
-                        {
-                            float cpx = Position[0]*PHYS_SCALE;
-                            float cpy = Position[1]*PHYS_SCALE;
-                            float tkdi = calcdist(fall_hole.x,fall_hole.y, cpx,cpy);
-                            if (tkdi > game_config.hole_r)
+                            if (!fall)
                             {
-                                float tfx,tfy;
-                                float fo = 0.25 * (tkdi-game_config.hole_r) / (game_config.hole_r*(sqrt(2)-1));
-                                tfx = ((fall_hole.x - cpx) / tkdi) * fo;
-                                tfy = ((fall_hole.y - cpy) / tkdi) * fo;
-                                dBodyAddForce(body, tfx, tfy, 0);
-                                //printf("%.4f %.4f\n",tfx,tfy);
+                                dBodyAddForce(body, forcex, 0, 0);
+                                dBodyAddForce(body, 0, forcey, 0);
+
+                                //printf("%.4f  %.4f  %.4f\n", LinearVel[0], LinearVel[1], LinearVel[2]);
+                                //printf("%.4f  %.4f  %.4f\n", AngularVel[0], AngularVel[1], AngularVel[2]);
+                                float qu;
+
+                                qu=0;
+                                if (LinearVel[0] >  0.002) qu=-1;
+                                if (LinearVel[0] < -0.002) qu= 1;
+                                if (qu!=0) dBodyAddForce(body, qu*0.0017*( 0.5*GRAV_CONST*cos(asin(ax)) ), 0, 0);
+
+                                qu=0;
+                                if (LinearVel[1] >  0.002) qu=-1;
+                                if (LinearVel[1] < -0.002) qu= 1;
+                                if (qu!=0) dBodyAddForce(body, 0, qu*0.0017*( 0.5*GRAV_CONST*cos(asin(ay)) ), 0);
+
+                                qu=0;
+                                if (AngularVel[2] >  0.003) qu=-1;
+                                if (AngularVel[2] < -0.003) qu= 1;
+                                if (qu!=0) dBodyAddTorque(body, 0,0, qu*0.0005);
+                            }
+                            else //fall
+                            {
+                                float cpx = Position[0]*PHYS_SCALE;
+                                float cpy = Position[1]*PHYS_SCALE;
+                                float tkdi = calcdist(fall_hole.x,fall_hole.y, cpx,cpy);
+                                if (tkdi > game_config.hole_r)
+                                {
+                                    float tfx,tfy;
+                                    float fo = 0.25 * (tkdi-game_config.hole_r) / (game_config.hole_r*(sqrt(2)-1));
+                                    tfx = ((fall_hole.x - cpx) / tkdi) * fo;
+                                    tfy = ((fall_hole.y - cpy) / tkdi) * fo;
+                                    dBodyAddForce(body, tfx, tfy, 0);
+                                    //printf("%.4f %.4f\n",tfx,tfy);
+                                }
                             }
                         }
 
