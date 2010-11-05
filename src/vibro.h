@@ -23,10 +23,6 @@
 #ifndef VIBRO_H
 #define VIBRO_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "types.h"
 
 int init_vibro();
@@ -34,4 +30,3 @@ int set_vibro(BYTE level);
 int close_vibro();
 
 #endif /* VIBRO_H */
-

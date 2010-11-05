@@ -23,8 +23,6 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <SDL/SDL.h>
-
 //#define MDIR ""
 //#define MDIR "data/"
 #define MDIR DATADIR "/mokomaze/"

@@ -23,12 +23,6 @@
 #ifndef ACCELEROMETERS_H
 #define ACCELEROMETERS_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-//#include "types.h"
-
 void accelerometer_start();
 void accelerometer_stop();
 

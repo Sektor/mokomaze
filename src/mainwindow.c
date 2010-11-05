@@ -20,24 +20,19 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <stdio.h>
 #include <math.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_thread.h>
 #include <SDL/SDL_ttf.h>
+//#define dDOUBLE
+#include <ode/ode.h>
+
 #include "types.h"
 #include "accelerometers.h"
 #include "paramsloader.h"
 #include "vibro.h"
-
-//#define dDOUBLE
-#include <ode/ode.h>
-
 
 #define GRAV_CONST 9.81*1.0
 int prev_px, prev_py; // for renderer

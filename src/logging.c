@@ -27,7 +27,6 @@
 #include <stdbool.h>
 
 #include "logging.h"
-#include "config.h"
 
 void log_message(MESSAGE_TYPE type, char* fmt, ...)
 {

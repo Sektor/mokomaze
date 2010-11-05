@@ -23,10 +23,6 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 void render_window(int start_level);
 
 #endif

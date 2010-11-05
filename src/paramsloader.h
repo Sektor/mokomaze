@@ -23,10 +23,6 @@
 #ifndef PARAMSLOADER_H
 #define PARAMSLOADER_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "types.h"
 
 void parse_command_line(int argc, char *argv[]);
