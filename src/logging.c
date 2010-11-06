@@ -29,35 +29,36 @@
 
 void log_message(MESSAGE_TYPE type, char* fmt, ...)
 {
-	va_list list;
-	char* hdr = NULL;
-	va_start(list, fmt);
+    va_list list;
+    char* hdr = NULL;
+    va_start(list, fmt);
 
-	switch (type) {
-	case MSG:
-		break;
-	case INFO:
-		hdr = "[INFO]";
-		break;
-	case WARNING:
-		hdr = "[WARNING]";
-		break;
-	case ERROR:
-		hdr = "[ERROR]";
-		break;
-	case DBG:
-		hdr = "[DEBUG]";
-		break;
-	default:
-		hdr = "[UNKNOWN]";
-		break;
-	}
+    switch (type)
+    {
+    case MSG:
+        break;
+    case INFO:
+        hdr = "[INFO]";
+        break;
+    case WARNING:
+        hdr = "[WARNING]";
+        break;
+    case ERROR:
+        hdr = "[ERROR]";
+        break;
+    case DBG:
+        hdr = "[DEBUG]";
+        break;
+    default:
+        hdr = "[UNKNOWN]";
+        break;
+    }
 
-        FILE *stream = (type == ERROR) ? stderr : stdout;
-        if (hdr!=NULL)
-            fprintf(stream, "%s ", hdr);
-        vfprintf(stream, fmt, list);
-        fprintf(stream, "\n");
+    FILE *stream = (type == ERROR) ? stderr : stdout;
+    if (hdr != NULL)
+        fprintf(stream, "%s ", hdr);
+    vfprintf(stream, fmt, list);
+    fprintf(stream, "\n");
 
-	va_end(list);
+    va_end(list);
 }

@@ -26,11 +26,11 @@
 
 // Supported message types.
 typedef enum {
-        MSG,
-	INFO,
-	WARNING,
-	ERROR,
-	DBG
+    MSG,
+    INFO,
+    WARNING,
+    ERROR,
+    DBG
 } MESSAGE_TYPE;
 
 // Main logging routine. Should not be used directly.
