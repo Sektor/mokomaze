@@ -504,11 +504,11 @@ void RenderLevel()
         x  = bxs[i].x1-1;
         if (x>=0)
             for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.3);
+                TryToShadow(x,y,0.6);
         x  = bxs[i].x2+0;
         if (x<game_config.wnd_w)
             for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.3);
+                TryToShadow(x,y,0.6);
 
         //light horisontal lines
         x1 = max(bxs[i].x1, 0);
@@ -516,11 +516,11 @@ void RenderLevel()
         y  = bxs[i].y1-1;
         if (y>=0)
             for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.3);
+                TryToShadow(x,y,0.6);
         y  = bxs[i].y2+0;
         if (y<game_config.wnd_h)
             for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.3);
+                TryToShadow(x,y,0.6);
 
         //dark vertical lines
         y1 = max(bxs[i].y1-1, 0);
@@ -528,11 +528,11 @@ void RenderLevel()
         x  = bxs[i].x1-2;
         if (x>=0)
             for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.6);
+                TryToShadow(x,y,0.3);
         x  = bxs[i].x2+1;
         if (x<game_config.wnd_w)
             for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.6);
+                TryToShadow(x,y,0.3);
 
         //dark horisontal lines
         x1 = max(bxs[i].x1-1, 0);
@@ -540,11 +540,11 @@ void RenderLevel()
         y  = bxs[i].y1-2;
         if (y>=0)
             for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.6);
+                TryToShadow(x,y,0.3);
         y  = bxs[i].y2+1;
         if (y<game_config.wnd_h)
             for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.6);
+                TryToShadow(x,y,0.3);
     }
 
 //-- Draw holes ----------------------------------------------------------------
