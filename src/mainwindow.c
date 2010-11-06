@@ -1403,9 +1403,20 @@ void render_window(int start_level)
 
 		while(SDL_PollEvent(&event))
                 {
+                    int btndown = 0;
                     if (event.type == SDL_QUIT)
                     {
                         done=1;
+                    }
+                    if (event.type == SDL_ACTIVEEVENT)
+                    {
+                        int g = event.active.gain;
+                        int s = event.active.state;
+                        if (fullscreen && !g &&
+                            ((s & SDL_APPINPUTFOCUS) || (s & SDL_APPACTIVE)))
+                        {
+                            btndown = 1;
+                        }
                     }
                     if (event.type == SDL_MOUSEMOTION)
                     {
@@ -1417,6 +1428,10 @@ void render_window(int start_level)
                         StopFastChange();
                     }
                     if (event.type == SDL_MOUSEBUTTONDOWN)
+                    {
+                        btndown = 1;
+                    }
+                    if (btndown)
                     {
                         if (!fullscreen)
                         {
