@@ -2,6 +2,7 @@
  *
  *  Logging related functions.
  *
+ *  (c) 2010 Anton Olkhovik <ant007h@gmail.com>
  *  (c) 2009 Peter Tworek <tworaz666@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
@@ -23,20 +24,13 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
-// Colors used by logger
-#define INFO_FORMAT  "\e[1;32m%s\e[00m %s\n"
-#define WARN_FORMAT  "\e[1;33m%s\e[00m %s\n"
-#define ERROR_FORMAT "\e[1;31m%s\e[00m %s\n"
-#define DEBUG_FORMAT "\e[1;36m%s\e[00m %s\n"
-
 // Supported message types.
 typedef enum {
+        MSG,
 	INFO,
 	WARNING,
 	ERROR,
-#ifdef DEBUG
-	DBG,
-#endif // DEBUG
+	DBG
 } MESSAGE_TYPE;
 
 // Main logging routine. Should not be used directly.
@@ -44,14 +38,14 @@ typedef enum {
 void log_message(MESSAGE_TYPE type, char* fmt, ...);
 
 // Logging macros.
-#define log_info(format, args...)    log_message(INFO, format, ## args)
-#define log_warning(format, args...) log_message(WARNING, format, ## args)
-#define log_error(format, args...)   log_message(ERROR, format, ## args)
+#define log(...)    log_message(MSG, __VA_ARGS__)
+#define log_info(...)    log_message(INFO, __VA_ARGS__)
+#define log_warning(...) log_message(WARNING, __VA_ARGS__)
+#define log_error(...)   log_message(ERROR, __VA_ARGS__)
 #ifdef DEBUG
-#define log_debug(format, args...)   log_message(DBG, format, ## args)
+#define log_debug(...)   log_message(DBG, __VA_ARGS__)
 #else
-#define log_debug(format, args...)
+#define log_debug(...)
 #endif // DEBUG
 
 #endif // LOGGING_H
-
