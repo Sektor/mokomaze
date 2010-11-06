@@ -36,9 +36,10 @@
 #include <SDL/SDL_thread.h>
 #include <math.h>
 
+#include "types.h"
 #include "paramsloader.h"
 #include "accelerometers.h"
-#include "types.h"
+#include "logging.h"
 
 int finished=0;
 SDL_Thread *thread;
@@ -129,25 +130,25 @@ static void accelerometer_freerunner_try_threshold(AccelHandle *accel)
 	fh = accelerometer_freerunner_open_threshold("r");
         if ( fh == NULL )
         {
-            fprintf(stderr, "Accelerometer: can't open threshold file for reading.\n");
+            log_warning("Accelerometer: can't open threshold file for reading.");
             return;
         }
         signed int trh = -1;
         rval = fscanf(fh, "%i", &trh);
 	if ( rval != 1 )
         {
-            fprintf(stderr, "Accelerometer: can't read threshold value.\n");
+            log_warning("Accelerometer: can't read threshold value.");
 	}
         else
         {
-            printf("Accelerometer: current threshold value is %i\n", trh);
+            log_info("Accelerometer: current threshold value is %i", trh);
             accel->old_threshold = trh;
         }
         fclose(fh);
 
         if (trh == 0)
         {
-            printf("Accelerometer: threshold is not required to be changed.\n");
+            log_info("Accelerometer: threshold is not required to be changed.");
             return;
         }
 
@@ -155,12 +156,12 @@ static void accelerometer_freerunner_try_threshold(AccelHandle *accel)
 	fh = accelerometer_freerunner_open_threshold("w");
 	if ( fh == NULL )
         {
-            fprintf(stderr, "Accelerometer: can't open threshold file for writing.\n");
+            log_warning("Accelerometer: can't open threshold file for writing.");
             return;
 	}
 	fprintf(fh, "0\n");
 	fclose(fh);
-        printf("Accelerometer: threshold disabled successfully.\n");
+        log_info("Accelerometer: threshold disabled successfully.");
         accel->threshold_changed = 1;
 
 }
@@ -175,39 +176,39 @@ static void accelerometer_freerunner_try_restore_threshold(AccelHandle *accel)
 	if ( (!(accel->threshold_changed)) ||
                (accel->old_threshold < 0) )
         {
-		printf("Accelerometer: threshold is not required to be restored.\n");
+		log_info("Accelerometer: threshold is not required to be restored.");
                 return;
 	}
 
-        printf("Accelerometer: trying to restore old threshold value.\n");
+        log_info("Accelerometer: trying to restore old threshold value.");
 
 	fh = accelerometer_freerunner_open_threshold("r");
 	if ( fh == NULL ) {
-		fprintf(stderr, "Accelerometer: can't open threshold file for reading.\n");
+		log_warning("Accelerometer: can't open threshold file for reading.");
 		return;
 	}
 	rval = fscanf(fh, "%i", &new_threshold);
 	if ( rval != 1 ) {
-		fprintf(stderr, "Accelerometer: can't read new threshold\n");
+		log_warning("Accelerometer: can't read new threshold");
                 new_threshold = 0;
 	}
 	fclose(fh);
 
 	/* Restore only if it hasn't been altered externally */
 	if ( new_threshold != 0 ) {
-		printf("Accelerometer: threshold has been altered externally - not restoring.\n");
+		log_info("Accelerometer: threshold has been altered externally - not restoring.");
 		return;
 	}
 
 	/* Set it back to the old value */
 	fh = accelerometer_freerunner_open_threshold("w");
 	if ( fh == NULL ) {
-		fprintf(stderr, "Accelerometer: can't open threshold file for writing.\n");
+		log_warning("Accelerometer: can't open threshold file for writing.");
 		return;
 	}
 	fprintf(fh, "%i\n", accel->old_threshold);
 	fclose(fh);
-	printf("Accelerometer: threshold restored successfully.\n");
+	log_info("Accelerometer: threshold restored successfully.");
 
 }
 
@@ -233,7 +234,7 @@ AccelHandle *accelerometer_open()
         /* Determine accelerometer type */
 
         if (!arguments.accel_set)
-            printf("Accelerometer: starting auto-detection of device type\n");
+            log_info("Accelerometer: starting auto-detection of device type");
 
         if ( !((arguments.accel_set) && (arguments.accel != ACCEL_HDAPS)) )
         {
@@ -243,14 +244,14 @@ AccelHandle *accelerometer_open()
                 accel->fd = open(HDAPS_FILE, O_RDONLY, O_NONBLOCK);
                 if ( accel->fd != -1 ) {
                         //accel->type = ACCEL_HDAPS;
-                        printf("Accelerometer: ThinkPad HDAPS detected\n");
-                        printf("Accelerometer: this devices is not supported yet. Switching to keyboard input\n");
+                        log_info("Accelerometer: ThinkPad HDAPS detected");
+                        log_info("Accelerometer: this devices is not supported yet. Switching to keyboard input");
                         return accel;
                 }
                 else
                 {
-                        fprintf(stderr, "Accelerometer: ThinkPad HDAPS device file detected, but can't be opened. " \
-                                        "Check access permissions\n");
+                        log_warning("Accelerometer: ThinkPad HDAPS device file detected, but can't be opened. " \
+                                    "Check access permissions");
                         cant_open = 1;
                 }
             }
@@ -258,7 +259,7 @@ AccelHandle *accelerometer_open()
             {
                 if (arguments.accel_set)
                 {
-                    fprintf(stderr, "Accelerometer: ThinkPad HDAPS device file not found\n");
+                    log_warning("Accelerometer: ThinkPad HDAPS device file not found");
                     cant_open = 1;
                 }
             }
@@ -273,14 +274,14 @@ AccelHandle *accelerometer_open()
                 if ( accel->fd != -1 ) {
 
                         accel->type = ACCEL_FREERUNNER;
-                        printf("Accelerometer: Neo Freerunner detected\n");
+                        log_info("Accelerometer: Neo Freerunner detected");
                         accelerometer_freerunner_try_threshold(accel);
                         return accel;
                 }
                 else
                 {
-                        fprintf(stderr, "Accelerometer: Neo Freerunner accelerometer file detected, but can't be opened. " \
-                                        "Check access permissions\n");
+                        log_warning("Accelerometer: Neo Freerunner accelerometer file detected, but can't be opened. " \
+                                    "Check access permissions");
                         cant_open = 1;
                 }
             }
@@ -288,7 +289,7 @@ AccelHandle *accelerometer_open()
             {
                 if (arguments.accel_set)
                 {
-                    fprintf(stderr, "Accelerometer: Neo Freerunner accelerometer file not found\n");
+                    log_warning("Accelerometer: Neo Freerunner accelerometer file not found");
                     cant_open = 1;
                 }
             }
@@ -299,9 +300,9 @@ AccelHandle *accelerometer_open()
         if ( !((arguments.accel_set) && (arguments.accel == ACCEL_UNKNOWN)) )
             if (cant_open == 0)
             {
-                fprintf(stderr, "Accelerometer: couldn't determine accelerometer type\n");
+                log_warning("Accelerometer: couldn't determine accelerometer type");
             }
-	fprintf(stderr, "Accelerometer: switching to keyboard input\n");
+	log_info("Accelerometer: switching to keyboard input");
 	return accel;
 }
 
@@ -319,7 +320,7 @@ int accelerometer_moo_hdaps(AccelHandle *accel)
 
 	rval = read(accel->fd, &ev, sizeof(ev));
 	if ( rval != sizeof(ev) ) {
-		fprintf(stderr, "Accelerometer: couldn't read data\n");
+		log_error("Accelerometer: couldn't read data");
 		return 0;
 	}
 	if (ev.type == EV_ABS && ev.code == REL_Y) {
@@ -331,7 +332,7 @@ int accelerometer_moo_hdaps(AccelHandle *accel)
 	return 0;
 
 	/*
- 	fprintf(stderr, "Event: time %ld.%06ld, type %s, code %d, value %d\n",
+ 	log_debug("Event: time %ld.%06ld, type %s, code %d, value %d",
 		       ev.time.tv_sec, ev.time.tv_usec,
 		       ev.type == EV_REL ? "REL" :
                        ev.type == EV_ABS ? "ABS" : "Other" ,
@@ -362,7 +363,7 @@ int accelerometer_moo_freerunner(AccelHandle *accel)
             
 		rval = read(accel->fd, &ev, sizeof(ev));
 		if ( rval != sizeof(ev) ) {
-			fprintf(stderr, "Accelerometer: couldn't read data\n");
+			log_error("Accelerometer: couldn't read data");
 			return 0;
 		}
 
@@ -433,7 +434,7 @@ int accelerometer_moo_freerunner(AccelHandle *accel)
                 SetUserCalX(zero_asin_acx);
                 SetUserCalY(zero_asin_acy);
                 calibrated = 1;
-                printf("Accelerometer: gravity calibrated (%.2f deg; %.2f deg)\n", zero_asin_acx*180.0/M_PI, zero_asin_acy*180.0/M_PI);
+                log_info("Accelerometer: gravity calibrated (%.2f deg; %.2f deg)", zero_asin_acx*180.0/M_PI, zero_asin_acy*180.0/M_PI);
             }
         }
 
@@ -496,7 +497,7 @@ int accel_work(void *data)
         zero_asin_acy = GetUserSettings().cal_y;
         if ((zero_asin_acx!=0) || (zero_asin_acy!=0))
         {
-            printf("Accelerometer: gravity calibration data loaded (%.2f deg; %.2f deg)\n", zero_asin_acx*180.0/M_PI, zero_asin_acy*180.0/M_PI);
+            log_info("Accelerometer: gravity calibration data loaded (%.2f deg; %.2f deg)", zero_asin_acx*180.0/M_PI, zero_asin_acy*180.0/M_PI);
         }
 
 	accel = accelerometer_open();
@@ -518,7 +519,7 @@ int accel_work(void *data)
                     {
                         if (past_time > WAIT_DATA_TIME)
                         {
-                            fprintf(stderr, "Accelerometer: no data recieved. Switching to keyboard input\n");
+                            log_warning("Accelerometer: no data recieved. Switching to keyboard input");
                             accelerometer_shutdown(accel);
                             accel->type = ACCEL_UNKNOWN;
                             recv_stable = 1;

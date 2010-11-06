@@ -32,6 +32,7 @@
 #include "mainwindow.h"
 #include "paramsloader.h"
 #include "vibro.h"
+#include "logging.h"
 
 int main(int argc, char *argv[]) {
 
@@ -43,7 +44,7 @@ int main(int argc, char *argv[]) {
         char* exec_final = GetExecFinal();
         if (strlen(exec_init) > 0) 
         {
-            printf("Init: executing initialization script\n");
+            log_info("Init: executing initialization script");
             system(exec_init);
         }
 
@@ -64,7 +65,7 @@ int main(int argc, char *argv[]) {
         if (GetVibroEnabled()) init_vibro();
 
         if ( SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0 ) {
-		fprintf(stderr, "Couldn't initialise SDL: %s\n", SDL_GetError());
+		log_error("Couldn't initialise SDL: %s", SDL_GetError());
 		return 1;
 	}
 
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]) {
 
         if (strlen(exec_final) > 0) 
         {
-            printf("Init: executing finalization script\n");
+            log_info("Init: executing finalization script");
             system(exec_final);
         }
 

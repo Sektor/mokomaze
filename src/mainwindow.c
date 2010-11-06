@@ -33,6 +33,7 @@
 #include "accelerometers.h"
 #include "paramsloader.h"
 #include "vibro.h"
+#include "logging.h"
 
 #define GRAV_CONST 9.81*1.0
 int prev_px, prev_py; // for renderer
@@ -140,7 +141,7 @@ void BumpVibrate(float speed)
 {
     if (speed>0)
     {
-        //printf("%f\n",speed);
+        //log_debug("%f",speed);
         if (speed>=MIN_BUMP_SPEED)
         {
             float k = (speed-MIN_BUMP_SPEED)/(MAX_BUMP_SPEED-MIN_BUMP_SPEED);
@@ -744,7 +745,7 @@ SDL_Surface* LoadImg(char *file)
     SDL_Surface* res = IMG_Load(file);
     if (res==NULL)
     {
-        fprintf(stderr, "Main: can't load image '%s'.\n", file);
+        log_error("Main: can't load image '%s'.", file);
         LoadImgErrors++;
     }
     return res;
@@ -1183,7 +1184,7 @@ void render_window(int start_level)
         TTF_Font* font = TTF_OpenFont(MFONTDIR FONT_NAME, 24);
         if (!font)
         {
-            fprintf(stderr, "Main: can't load font '" MFONTDIR FONT_NAME "'. Exiting.\n");
+            log_error("Main: can't load font '" MFONTDIR FONT_NAME "'. Exiting.");
             return;
         }
         SDL_Color fontColor;
@@ -1227,7 +1228,7 @@ void render_window(int start_level)
 
         if (LoadImgErrors>0)
         {
-            fprintf(stderr, "Main: some images was not loaded. Exiting.\n");
+            log_error("Main: some images was not loaded. Exiting.");
             return;
         }
 
@@ -1263,7 +1264,7 @@ void render_window(int start_level)
 	screen = SDL_SetVideoMode(game_config.wnd_w, game_config.wnd_h, 16, sdl_flags);
         if (screen==NULL)
         {
-            fprintf(stderr, "Main: can't set video mode. Exiting.\n");
+            log_error("Main: can't set video mode. Exiting.");
             return;
         }
 	SDL_WM_SetCaption("Mokomaze", "Mokomaze");
@@ -1563,7 +1564,7 @@ void render_window(int start_level)
                 const dReal *poss;
                 const dReal *R;
 
-                //printf("%d\n", delta_ticks);
+                //log_debug("%d", delta_ticks);
                 float phys_step = (0.013/30.0) * delta_ticks;
                 if (prev_phys_step>0) phys_step = prev_phys_step + (phys_step - prev_phys_step) * 0.6;
                 prev_phys_step = phys_step;
@@ -1609,8 +1610,8 @@ void render_window(int start_level)
                                 dBodyAddForce(body, forcex, 0, 0);
                                 dBodyAddForce(body, 0, forcey, 0);
 
-                                //printf("%.4f  %.4f  %.4f\n", LinearVel[0], LinearVel[1], LinearVel[2]);
-                                //printf("%.4f  %.4f  %.4f\n", AngularVel[0], AngularVel[1], AngularVel[2]);
+                                //log_debug("%.4f  %.4f  %.4f", LinearVel[0], LinearVel[1], LinearVel[2]);
+                                //log_debug("%.4f  %.4f  %.4f", AngularVel[0], AngularVel[1], AngularVel[2]);
                                 float qu;
 
                                 qu=0;
@@ -1640,7 +1641,7 @@ void render_window(int start_level)
                                     tfx = ((fall_hole.x - cpx) / tkdi) * fo;
                                     tfy = ((fall_hole.y - cpy) / tkdi) * fo;
                                     dBodyAddForce(body, tfx, tfy, 0);
-                                    //printf("%.4f %.4f\n",tfx,tfy);
+                                    //log_debug("%.4f %.4f",tfx,tfy);
                                 }
                             }
                         }
@@ -1656,7 +1657,7 @@ void render_window(int start_level)
 
                         poss = dGeomGetPosition (geom);
 
-                        //printf("%.4f %.4f %.4f\n",poss[0],poss[1],poss[2]);
+                        //log_debug("%.4f %.4f %.4f",poss[0],poss[1],poss[2]);
 
                         int nanc=0;
                         for (int j=0; j<3; j++)
@@ -1692,7 +1693,7 @@ void render_window(int start_level)
                 if (fall)
                 {
                     const dReal *lv = dBodyGetLinearVel(body);
-                    //printf ("%f %f %f\n",lv[0],lv[1],lv[2]);
+                    //log_debug("%f %f %f",lv[0],lv[1],lv[2]);
                     if ( sqrt(lv[0]*lv[0]+lv[1]*lv[1]+lv[2]*lv[2]) < PHYS_MIN_FALL_VEL )
                         if (poss[2]*PHYS_SCALE <= -game_config.ball_r*3.0/4.0)
                             game_state = new_game_state;

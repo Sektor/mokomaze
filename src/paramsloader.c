@@ -29,6 +29,7 @@
 
 #include "types.h"
 #include "json.h"
+#include "logging.h"
 
 Config game_config;
 Level* game_levels;
@@ -88,8 +89,8 @@ void load_params()
     if (!pHome)
     {
         can_save=0;
-        printf("File_loader: can't retrieve environment variable HOME\n");
-        printf("File_loader: savegame data not available\n");
+        log_warning("File_loader: can't retrieve environment variable HOME");
+        log_warning("File_loader: savegame data not available");
     }
     else
     {
@@ -113,38 +114,38 @@ void load_params()
     {
         if (load_file_to_mem(save_file_full, &usr) < 0)
         {
-            printf("File_loader: savegame file not found\n");
+            log_info("File_loader: savegame file not found");
         }
     }
 
-//    printf("%s\n",cfg);
-//    printf("%s\n",lvl);
+//    log_debug("%s",cfg);
+//    log_debug("%s",lvl);
 
     char *document;;
     json_t *root;
 
 //-----------------------------------------------------------
     document = cfg;
-    //printf("Parsing the document...\n");
+    //log_debug("Parsing the document...");
     json_parse_document(&root, document);
-    //printf("Printing the document tree...\n");
+    //log_debug("Printing the document tree...");
     //json_render_tree(root);
 
-    //printf("wnd_w\n");
-    //printf("%s\n", root->child->child->child->child->text);
+    //log_debug("wnd_w");
+    //log_debug("%s", root->child->child->child->child->text);
     game_config.wnd_w = atoi(root->child->child->child->child->text);
-    //printf("wnd_h\n");
-    //printf("%s\n", root->child->child->child-> next-> child->text);
+    //log_debug("wnd_h");
+    //log_debug("%s", root->child->child->child-> next-> child->text);
     game_config.wnd_h = atoi(root->child->child->child-> next-> child->text);
     game_config.f_delay = atoi(root->child->child->child-> next->next-> child->text);
     game_config.fullscreen = atoi(root->child->child->child-> next->next->next-> child->text);
 
-    //printf("ball_rad\n");
-    //printf("%s\n", root->child-> next-> child->child->child->text);
+    //log_debug("ball_rad");
+    //log_debug("%s", root->child-> next-> child->child->child->text);
     game_config.ball_r = atoi(root->child-> next-> child->child->child->text);
 
-    //printf("hole_rad\n");
-    //printf("%s\n", root->child-> next->next-> child->child->child->text);
+    //log_debug("hole_rad");
+    //log_debug("%s", root->child-> next->next-> child->child->child->text);
     game_config.hole_r = atoi(root->child-> next->next-> child->child->child->text);
 
     game_config.key_r = atoi(root->child-> next->next->next-> child->child->child->text);
@@ -165,15 +166,15 @@ void load_params()
 //-----------------------------------------------------------
  
     document = lvl;
-    //printf("Parsing the document...\n");
+    //log_debug("Parsing the document...");
     json_parse_document(&root, document);
-    //printf("Printing the document tree...\n");
+    //log_debug("Printing the document tree...");
     //json_render_tree(root);
 
     json_t *level = root->child->   next->next->next->   child->child;
     int levels_count = GetNodesCount(level);
     game_levels_count = levels_count;
-    printf("File_loader: %d game levels parsed\n", game_levels_count);
+    log_info("File_loader: %d game levels parsed", game_levels_count);
     game_levels = (Level*)malloc(sizeof(Level) * levels_count);
     int i=0;
     int j=0;
@@ -315,7 +316,7 @@ void load_params()
         
         if (savegame_error)
         {
-            fprintf(stderr, "File_loader: error parsing savegame file\n");
+            log_error("File_loader: error parsing savegame file");
         }
     }
 
@@ -344,20 +345,20 @@ void SaveLevel(int n)
     struct stat st;
     if (stat(save_dir_full, &st) != 0)
     {
-        printf("File_saver: directory '%s' not exists. Trying to create.\n", save_dir_full);
+        log_info("File_saver: directory '%s' not exists. Trying to create.", save_dir_full);
         if (mkdir(save_dir_full, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0)
         {
-            printf("File_saver: can't create\n");
+            log_error("File_saver: can't create");
             free(save_dir_full); free(save_file_full);
             return;
         }
-        printf("File_saver: created successfully\n");
+        log_info("File_saver: created successfully");
     }
 
     FILE *f = fopen(save_file_full, "w");
     if (!f)
     {
-            printf("File_saver: can't open savegame file '%s' for writing\n", save_file_full);
+            log_error("File_saver: can't open savegame file '%s' for writing", save_file_full);
             free(save_dir_full); free(save_file_full);
             return;
     }
@@ -370,24 +371,24 @@ void SaveLevel(int n)
 
 void print_help()
 {
-    printf("Usage: mokomaze [-i input_device_type] [-l level_number] [-c option]\n");
-    printf("-i, --input\n");
-    printf("    It is used to determine input device type manually. Currently\n");
-    printf("    supported values is 'freerunner' (to use Freerunner's\n");
-    printf("    accelerometer) and 'keyboard'.\n");
-    printf("-l, --level\n");
-    printf("    It specifies a level from which the game will be started.\n");
-    printf("    Levels are counted from 1.\n");
-    printf("-c, --calibrate\n");
-    printf("    It is used to perform the accelerometer calibration\n");
-    printf("    ('auto' option) or to reset calibration data ('reset' option).\n");
-    printf("Examples:\n");
-    printf("    mokomaze\n");
-    printf("    mokomaze -l 5\n");
-    printf("    mokomaze -i freerunner\n");
-    printf("    mokomaze -i keyboard -l 2\n");
-    printf("    mokomaze -c auto\n");
-    printf("    mokomaze -c reset\n");
+    log("Usage: mokomaze [-i input_device_type] [-l level_number] [-c option]");
+    log("-i, --input");
+    log("    It is used to determine input device type manually. Currently");
+    log("    supported values is 'freerunner' (to use Freerunner's");
+    log("    accelerometer) and 'keyboard'.");
+    log("-l, --level");
+    log("    Specifies a level from which the game will be started.");
+    log("    Levels are counted from 1.");
+    log("-c, --calibrate");
+    log("    Performs the accelerometer calibration ('auto' option)");
+    log("    or resets the calibration data ('reset' option).");
+    log("Examples:");
+    log("    mokomaze");
+    log("    mokomaze -l 5");
+    log("    mokomaze -i freerunner");
+    log("    mokomaze -i keyboard -l 2");
+    log("    mokomaze -c auto");
+    log("    mokomaze -c reset");
 }
 
 void parse_command_line(int argc, char *argv[])
@@ -398,7 +399,7 @@ void parse_command_line(int argc, char *argv[])
     {
         if ( (!strcmp(argv[i],"-h")) || (!strcmp(argv[i],"--help")) )
         {
-            printf("Mokomaze - ball-in-the-labyrinth game\n");
+            log("Mokomaze - ball-in-the-labyrinth game");
             print_help();
             exit(0);
         }
@@ -417,14 +418,14 @@ void parse_command_line(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("Arguments_parser: unknown calibration parameter '%s'\n", option);
+                    log_warning("Arguments_parser: unknown calibration parameter '%s'", option);
                     return;
                 }
                 i++;
             }
             else
             {
-                printf("Arguments_parser: calibration parameter undefined\n");
+                log_warning("Arguments_parser: calibration parameter undefined");
                 return;
             }
         }
@@ -438,7 +439,7 @@ void parse_command_line(int argc, char *argv[])
             }
             else
             {
-                printf("Arguments_parser: level number undefined\n");
+                log_warning("Arguments_parser: level number undefined");
                 return;
             }
         }
@@ -462,7 +463,7 @@ void parse_command_line(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("Arguments_parser: unknown input device type '%s'\n", accel_name);
+                    log_warning("Arguments_parser: unknown input device type '%s'", accel_name);
                     known = 0;
                     return;
                 }
@@ -472,13 +473,13 @@ void parse_command_line(int argc, char *argv[])
             }
             else
             {
-                printf("Arguments_parser: input device type undefined\n");
+                log_warning("Arguments_parser: input device type undefined");
                 return;
             }
         }
         else
         {
-            printf("Arguments_parser: unknown argument '%s'\n", argv[i]);
+            log_warning("Arguments_parser: unknown argument '%s'", argv[i]);
             return;
         }
     }

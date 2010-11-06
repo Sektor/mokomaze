@@ -32,6 +32,7 @@
 
 #include "paramsloader.h"
 #include "vibro.h"
+#include "logging.h"
 
 FILE* fvibro=NULL;
 SDL_TimerID vibro_timer=0;
@@ -55,7 +56,7 @@ int init_vibro()
     fvibro = fopen("/sys/devices/platform/neo1973-vibrator.0/leds/neo1973:vibrator/brightness", "w");
     if (fvibro != NULL) return 0;
 
-    fprintf(stderr, "Vibro: can't init.\n");
+    log_warning("Vibro: can't init.");
     return 1;
 }
 
