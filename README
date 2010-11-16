@@ -55,10 +55,9 @@ several game levels in the file. Each level consists of "boxes" (walls),
 
 Graphic content
 ---------------
-All the pictures are made by the author of the game. The exception is
-"Blue Velvet" Icons (used as a part of GUI) by http://dryicons.com which
-is destributed under DryIcons Free License. The logo of Mokomaze was
-created under the impression of Neverball logo.
+All the pictures are made by the author of the game. Menu icons are
+based on the Konqueror icon from the KDE Oxygen theme. The logo of
+Mokomaze was created under the impression of Neverball logo.
 
 No Warranty
 -----------
