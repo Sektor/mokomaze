@@ -64,6 +64,7 @@ int load_file_to_mem(const char *filename, char **result)
     if (size != fread(*result, sizeof (char), size, f))
     {
         free(*result);
+        fclose(f);
         return -2; // reading fail
     }
     fclose(f);
