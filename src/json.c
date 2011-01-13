@@ -880,7 +880,7 @@ json_escape (char * text)
 {
 	rcstring *output;
 	size_t i, length;
-	char buffer[6];
+	char buffer[7];
 	/* check if pre-conditions are met */
 	assert (text != NULL);
 
