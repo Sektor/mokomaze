@@ -17,7 +17,7 @@ mokomaze_SOURCES = \
   main.c mainwindow.c paramsloader.c accelerometers.c vibro.c json.c logging.c \
   types.h mainwindow.h paramsloader.h accelerometers.h vibro.h json.h logging.h
 
-mokomaze_LDADD  = @SDL_LIBS@
+mokomaze_LDADD  = @SDL_LIBS@ -lm
 
 MAINTAINERCLEANFILES  = config.h.in Makefile.in
 
