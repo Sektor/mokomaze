@@ -101,6 +101,7 @@ int close_vibro()
             vibro_timer=0;
         }
         fclose(fvibro);
+        fvibro=NULL;
     }
     return 0;
 }
