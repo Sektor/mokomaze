@@ -1281,8 +1281,6 @@ void render_window(int start_level)
         desk_rect.w=game_config.wnd_w; desk_rect.h=game_config.wnd_h;
 
 	SDL_Rect ball_rect;
-	SDL_Rect hole_rect;
-        hole_rect.w=game_config.hole_r * 2; hole_rect.h=game_config.hole_r * 2; //
 
         //alloc buffer for speed up drawing of the shadows
         shadowbuf = malloc(game_config.wnd_w * game_config.wnd_h);

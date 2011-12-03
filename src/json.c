@@ -2338,13 +2338,10 @@ enum json_error json_parse_document (json_t **root, char *text)
 json_saxy_parse (struct json_saxy_parser_status *jsps, struct json_saxy_functions *jsf, char c)
 {
 	/*TODO handle a string instead of a single char */
-	/* temp variables */
-	rcstring *temp;
 
 	/* make sure everything is in it's place */
 	assert (jsps != NULL);
 	assert (jsf != NULL);
-	temp = NULL;
 
 	/* goto where we left off */
 	switch (jsps->state)
