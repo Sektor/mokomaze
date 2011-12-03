@@ -1408,6 +1408,28 @@ void render_window(int start_level)
                     {
                         done=1;
                     }
+                    if (event.type == SDL_KEYDOWN)
+                    {
+                        btndown = 1;
+                    }
+                    if (event.type == SDL_KEYUP)
+                    {
+                       switch(event.key.keysym.sym)
+                       {
+                               case SDLK_q:
+                               case SDLK_ESCAPE:
+                                       if( !fullscreen ) StopFastChange();
+                                       else done=1;
+                                       break;
+                               case SDLK_SPACE:
+                               case SDLK_p:
+                               case SDLK_PAUSE:
+                                       StopFastChange();
+                                       break;
+                               default:
+                                       break;
+                       }
+                    }
                     if (event.type == SDL_ACTIVEEVENT)
                     {
                         int g = event.active.gain;
