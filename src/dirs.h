@@ -1,8 +1,6 @@
-/*  accelerometers.h
+/*  dirs.h
  *
- *  Accelerometer stuff
- *
- *  (c) 2009 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,15 +18,13 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ACCELEROMETERS_H
-#define ACCELEROMETERS_H
+#ifndef DIRS_H
+#define DIRS_H
 
-void accelerometer_start();
-void accelerometer_stop();
+//#define MDIR ""
+//#define MDIR "../data/"
+#define MDIR DATADIR "/mokomaze/"
+//#define MFONTDIR ""
+#define MFONTDIR FONTDIR "/"
 
-double getacx();
-double getacy();
-double getacz();
-
-#endif /* ACCELEROMETERS_H */
-
+#endif /* DIRS_H */

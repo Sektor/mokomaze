@@ -1,8 +1,8 @@
 /*  main.c
  *
- *  Program entry point
+ *  Program entry point.
  *
- *  (c) 2009 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,70 +20,47 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
-
+#include <glib-object.h>
 #include "types.h"
-#include "json.h"
 #include "mainwindow.h"
 #include "paramsloader.h"
-#include "vibro.h"
+
+#define LOG_MODULE "Init"
 #include "logging.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
+    g_type_init();
 
-        parse_command_line(argc, argv);
-	load_params();
-        if (GetGameLevelsCount() == 0) return 0;
+    parse_command_line(argc, argv);
+    if (!load_params())
+    {
+        log_error("Failed to load required data.");
+        return EXIT_FAILURE;
+    }
+    if (GetGameLevelsCount() == 0)
+    {
+        log_error("Zero levels loaded. Exiting.");
+        return EXIT_FAILURE;
+    }
 
-        char* exec_init = GetExecInit();
-        char* exec_final = GetExecFinal();
-        if (strlen(exec_init) > 0) 
-        {
-            log_info("Init: executing initialization script");
-            system(exec_init);
-        }
+    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0)
+    {
+        log_error("Couldn't initialise SDL: %s", SDL_GetError());
+        return EXIT_FAILURE;
+    }
+    if (TTF_Init() < 0)
+    {
+        log_error("Couldn't initialise SDL_ttf: %s", TTF_GetError());
+        return EXIT_FAILURE;
+    }
 
-        Prompt arguments = GetArguments();
-        int start_level = 0;
+    render_window();
 
-        if (arguments.level_set)
-        {
-            start_level = arguments.level - 1;
-        }
-        else
-        {
-            start_level = GetUserSettings().level - 1;
-        }
-        if (start_level < 0) start_level=0;
-        if (start_level >= GetGameLevelsCount()) start_level = GetGameLevelsCount()-1;
+    TTF_Quit();
+    SDL_Quit();
 
-        if (GetVibroEnabled()) init_vibro();
-
-        if ( SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0 ) {
-		log_error("Couldn't initialise SDL: %s", SDL_GetError());
-		return 1;
-	}
-
-        TTF_Init();
-
-        render_window(start_level);
-
-        TTF_Quit();
-	SDL_Quit();
-        close_vibro();
-
-        if (strlen(exec_final) > 0) 
-        {
-            log_info("Init: executing finalization script");
-            system(exec_final);
-        }
-
-	return 0;
-
+    return EXIT_SUCCESS;
 }
-

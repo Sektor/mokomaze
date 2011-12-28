@@ -1,6 +1,4 @@
-/*  paramsloader.h
- *
- *  Config and level pack loader.
+/*  vibro_freerunner.h
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
@@ -20,18 +18,15 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef VIBRO_FREERUNNER_H
+#define VIBRO_FREERUNNER_H
 
-#include "types.h"
+#include "vibrotypes.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+typedef struct {
+    int duration;
+} VibroFreerunnerData;
 
-#endif
+void vibro_get_freerunner(VibroInterface *vibro, VibroFreerunnerData *data);
+
+#endif /* VIBRO_FREERUNNER_H */

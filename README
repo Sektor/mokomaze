@@ -1,6 +1,6 @@
                                Mokomaze
 
-               Copyright (C) 2009-2010 Anton Olkhovik
+               Copyright (C) 2009-2011 Anton Olkhovik
                          <ant007h@gmail.com>
 ======================================================================
 
@@ -20,24 +20,33 @@ Click on Mokomaze logo on the home screen or application menu or run it
 from the terminal by typing
   $ mokomaze
 Some parameters can also be passed to it:
-    mokomaze [-i input_device_type] [-l level_number] [-c option]
-    -i, --input
-        It is used to determine input device type manually. Currently
-        supported values is 'freerunner' (to use Freerunner's
-        accelerometer) and 'keyboard'.
-    -l, --level
-        Specifies a level from which the game will be started.
-        Levels are counted from 1.
-    -c, --calibrate
-        Performs the accelerometer calibration ('auto' option)
-        or resets the calibration data ('reset' option).
-    Examples:
-        mokomaze
-        mokomaze -l 5
-        mokomaze -i freerunner
-        mokomaze -i keyboard -l 2
-        mokomaze -c auto
-        mokomaze -c reset
+  mokomaze [-i <type>] [-v <type>] [-c <option>] [-l <int>] [-x <int>]
+  [-y <int>] [--bpp=<int>] [-s <boolean>] [-f <mode>] [--help]
+    -i, --input=<type>        input device type
+                              ('dummy', 'keyboard' or 'joystick')
+    -v, --vibro=<type>        vibro device type
+                              ('dummy' or 'freerunner')
+    -c, --calibration=<option> perform input device calibration
+                              ('auto' option) or reset calibration data
+                              ('reset' option)
+    -l, --level=<int>         define level from which the game will be
+                              started
+    -x <int>                  set window width
+    -y <int>                  set window height
+    --bpp=<int>               set color depth (16 or 32 bits per pixel)
+    -s, --scrolling=<boolean> scroll game window if the level does not
+                              fit to it
+    -f, --fullscreen=<mode>   set fullscreen mode
+                              ('none', 'ingame' or 'always')
+    --help                    print this help and exit
+
+  Examples:
+    mokomaze
+    mokomaze -l 5
+    mokomaze -i freerunner -v freerunner -x 480 -y 640 --bpp=16 -s false
+    mokomaze -i keyboard -v dummy -x 0 -y 0 --bpp=0 -s true -f none
+    mokomaze -c auto
+    mokomaze -c reset
 
 Playing
 -------
@@ -55,9 +64,9 @@ several game levels in the file. Each level consists of "boxes" (walls),
 
 Graphic content
 ---------------
-All the pictures are made by the author of the game. Menu icons are
-based on the KDE icon from the Oxygen theme. The logo of Mokomaze was
-created under the impression of Neverball logo.
+Menu icons are based on the KDE icon from the Oxygen theme. The logo of
+Mokomaze was created under the impression of Neverball logo. Other
+pictures are made by the author of the game.
 
 No Warranty
 -----------

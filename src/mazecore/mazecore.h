@@ -1,6 +1,6 @@
-/*  paramsloader.h
+/*  mazecore.h
  *
- *  Config and level pack loader.
+ *  Game logic routines.
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
@@ -20,18 +20,23 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef MAZECORE_H
+#define MAZECORE_H
 
-#include "types.h"
+#include "mazetypes.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+GameState maze_step(int delta_ticks);
+void maze_set_level(int n);
+void maze_restart_level();
+void maze_reload_level();
+void maze_set_config(MazeConfig cfg);
+void maze_set_levels_data(Level *lvls, int levels_count);
+void maze_set_vibro_callback(void (*f)(float));
+void maze_set_forces(float x, float y, float z);
+void maze_get_ball(int *x, int *y, int *z, const dReal **rot);
+void maze_get_animations(Animation **keys, Animation *final);
+bool maze_is_keys_passed();
+void maze_init();
+void maze_quit();
 
 #endif

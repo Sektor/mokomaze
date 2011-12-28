@@ -1,3 +1,12 @@
+2011-12-28	v0.7.0
+	* 100% vector graphics
+	* 16/32 bit color depth support
+	* Game board resize and rotation
+	* Screen scrolling mode
+	* Game settings GUI
+	* New JSON parser
+	* New command line parser
+
 2009-06-10	v0.5.5
 	* Added "pass-through-checkpoints" game mode
 

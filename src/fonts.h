@@ -1,8 +1,6 @@
-/*  paramsloader.h
+/*  fonts.h
  *
- *  Config and level pack loader.
- *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +18,12 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef FONTS_H
+#define FONTS_H
 
-#include "types.h"
+#include "dirs.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+#define DEFAULT_FONT_NAME "LiberationMono-Regular.ttf"
+#define DEFAULT_FONT_FILE MFONTDIR DEFAULT_FONT_NAME
 
-#endif
+#endif /* FONTS_H */

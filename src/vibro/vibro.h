@@ -1,8 +1,8 @@
-/*  paramsloader.h
+/*  vibro.h
  *
- *  Config and level pack loader.
+ *  Vibro feedback system.
  *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +20,18 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef VIBRO_H
+#define VIBRO_H
 
-#include "types.h"
+#include "vibro_dummy.h"
+#include "vibro_freerunner.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+typedef enum {
+    VIBRO_DUMMY,
+    VIBRO_FREERUNNER
+} VibroType;
 
-#endif
+#define VIBRO_DUMMY_STR "dummy"
+#define VIBRO_FREERUNNER_STR "freerunner"
+
+#endif /* VIBRO_H */

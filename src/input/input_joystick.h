@@ -1,6 +1,4 @@
-/*  paramsloader.h
- *
- *  Config and level pack loader.
+/*  input_joystick.h
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
@@ -20,18 +18,17 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef INPUT_JOYSTICK_H
+#define INPUT_JOYSTICK_H
 
-#include "types.h"
+#include "inputtypes.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+typedef struct {
+    char *fname;
+    float max_axis;
+    int interval;
+} InputJoystickData;
 
-#endif
+void input_get_joystick(InputInterface *input, InputJoystickData *data);
+
+#endif /* INPUT_JOYSTICK_H */

@@ -1,5 +1,5 @@
 AC_PREREQ(2.53)
-AC_INIT(mokomaze, 0.5.5+, http://mokomaze.projects.openmoko.org/)
+AC_INIT(mokomaze, 0.7.0+, http://mokomaze.sourceforge.net/)
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR(src/main.c)
 AC_CONFIG_HEADERS(config.h)
@@ -8,6 +8,7 @@ AM_MAINTAINER_MODE
 AC_SEARCH_LIBS([strerror],[cposix])
 AC_PROG_CC
 AC_PROG_CC_STDC
+AC_PROG_CXX
 AC_HEADER_STDC
 
 AC_PROG_SED
@@ -17,11 +18,26 @@ if test -z "$RSVGCONVERT" ; then
 fi
 
 PKG_CHECK_MODULES(SDL, sdl >= 1.0.0)
+AC_SUBST(SDL)
+
 AC_CHECK_LIB(SDL_image, IMG_Load, , [AC_MSG_ERROR([*** SDL_image not found!])])
 AC_CHECK_LIB(SDL_ttf, TTF_OpenFont, , [AC_MSG_ERROR([*** SDL_ttf not found!])])
+AC_CHECK_LIB(SDL_gfx, zoomSurface, , [AC_MSG_ERROR([*** SDL_gfx not found!])])
 AC_CHECK_LIB(ode, dInitODE, , [AC_MSG_ERROR([*** ODE not found!])])
 
-AC_SUBST(SDL)
+PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.20.1])
+AC_SUBST(GLIB)
+
+PKG_CHECK_MODULES(GLIBJSON, [json-glib-1.0 >= 0.6.2])
+AC_SUBST(GLIBJSON)
+
+PKG_CHECK_MODULES(RSVG, [librsvg-2.0 >= 2.26.0])
+AC_SUBST(RSVG)
+
+AC_CHECK_LIB(argtable2, arg_parse, , [AC_MSG_ERROR([*** argtable2 not found!])])
+
+AC_CHECK_LIB(guichan, gcnGuichanVersion, , [AC_MSG_ERROR([*** guichan not found!])])
+AC_CHECK_LIB(guichan_sdl, gcnSDL, , [AC_MSG_ERROR([*** guichan-sdl not found!])])
 
 #--------------------------------------------------------------
 if test "x"${FONTDIR} == "x"; then

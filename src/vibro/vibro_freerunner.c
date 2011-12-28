@@ -1,8 +1,6 @@
-/*  vibro.c
+/*  vibro_freerunner.c
  *
- *  Vibro feedback routines
- *
- *  (c) 2009 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -22,60 +20,52 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/select.h>
-#include <fcntl.h>
 #include <SDL/SDL.h>
+#include "vibro_freerunner.h"
 
-#include "paramsloader.h"
-#include "vibro.h"
-#include "logging.h"
+#define LOG_MODULE "Vibro::Freerunner"
+#include "../logging.h"
 
-FILE* fvibro=NULL;
-SDL_TimerID vibro_timer=0;
+static FILE *fvibro = NULL;
+static SDL_TimerID vibro_timer = 0;
+static VibroFreerunnerData params;
 
-#define VIBRATION_TIME 33
-int vib_int = VIBRATION_TIME;
-
-int init_vibro()
+static void vibro_init()
 {
-    vib_int = VIBRATION_TIME * GetVibroInterval() / 100;
-
     fvibro = fopen("/sys/class/leds/gta02::vibrator/brightness", "w");
-    if (fvibro != NULL) return 0;
+    if (fvibro != NULL) return;
 
     fvibro = fopen("/sys/devices/platform/leds_pwm/leds/gta02::vibrator/brightness", "w");
-    if (fvibro != NULL) return 0;
+    if (fvibro != NULL) return;
 
     fvibro = fopen("/sys/class/leds/neo1973:vibrator/brightness", "w");
-    if (fvibro != NULL) return 0;
+    if (fvibro != NULL) return;
 
     fvibro = fopen("/sys/devices/platform/neo1973-vibrator.0/leds/neo1973:vibrator/brightness", "w");
-    if (fvibro != NULL) return 0;
+    if (fvibro != NULL) return;
 
-    log_warning("Vibro: can't init.");
-    return 1;
+    log_warning("can't init");
 }
 
-Uint32 callback (Uint32 interval, void *param)
+static void stop_vibro()
+{
+    fprintf(fvibro, "%d", 0);
+    fflush(fvibro);
+    if (vibro_timer)
+    {
+        SDL_RemoveTimer(vibro_timer);
+        vibro_timer = 0;
+    }
+}
+
+static Uint32 callback(Uint32 interval, void *param)
 {
     if (fvibro)
-    {
-        fprintf(fvibro, "%d", 0);
-        fflush(fvibro);
-        if (vibro_timer)
-        {
-            SDL_RemoveTimer(vibro_timer);
-            vibro_timer=0;
-        }
-    }
+        stop_vibro();
     return 0;
 }
 
-int set_vibro(BYTE level)
+static void vibro_bump(uint8_t level)
 {
     if (fvibro) 
     {
@@ -83,25 +73,25 @@ int set_vibro(BYTE level)
         {
             fprintf(fvibro, "%d", level);
             fflush(fvibro);
-            vibro_timer = SDL_AddTimer(vib_int, callback, NULL);
+            vibro_timer = SDL_AddTimer(params.duration, callback, NULL);
         }
     }
-    return 0;
 }
 
-int close_vibro()
+static void vibro_shutdown()
 {
     if (fvibro)
     {
-        fprintf(fvibro, "%d", 0);
-        fflush(fvibro);
-        if (vibro_timer)
-        {
-            SDL_RemoveTimer(vibro_timer);
-            vibro_timer=0;
-        }
+        stop_vibro();
         fclose(fvibro);
+        fvibro = NULL;
     }
-    return 0;
 }
 
+void vibro_get_freerunner(VibroInterface *vibro, VibroFreerunnerData *data)
+{
+    params = *data;
+    vibro->init = &vibro_init;
+    vibro->shutdown = &vibro_shutdown;
+    vibro->bump = &vibro_bump;
+}

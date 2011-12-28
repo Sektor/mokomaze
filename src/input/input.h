@@ -1,8 +1,8 @@
-/*  paramsloader.h
+/*  input.h
  *
- *  Config and level pack loader.
+ *  Input system.
  *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +20,22 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef INPUT_H
+#define INPUT_H
 
-#include "types.h"
+#include "input_calibration.h"
+#include "input_dummy.h"
+#include "input_keyboard.h"
+#include "input_joystick.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+typedef enum {
+    INPUT_DUMMY,
+    INPUT_KEYBOARD,
+    INPUT_JOYSTICK
+} InputType;
 
-#endif
+#define INPUT_DUMMY_STR "dummy"
+#define INPUT_KEYBOARD_STR "keyboard"
+#define INPUT_JOYSTICK_STR "joystick"
+
+#endif /* INPUT_H */

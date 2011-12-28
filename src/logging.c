@@ -2,7 +2,7 @@
  *
  *  Logging related functions.
  *
- *  (c) 2010 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2010-2011 Anton Olkhovik <ant007h@gmail.com>
  *  (c) 2009 Peter Tworek <tworaz666@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
@@ -27,10 +27,10 @@
 
 #include "logging.h"
 
-void log_message(MESSAGE_TYPE type, char* fmt, ...)
+void log_message(MESSAGE_TYPE type, char *fmt, ...)
 {
     va_list list;
-    char* hdr = NULL;
+    char *hdr = NULL;
     va_start(list, fmt);
 
     switch (type)
@@ -41,7 +41,7 @@ void log_message(MESSAGE_TYPE type, char* fmt, ...)
         hdr = "[INFO]";
         break;
     case WARNING:
-        hdr = "[WARNING]";
+        hdr = "[WARN]";
         break;
     case ERROR:
         hdr = "[ERROR]";

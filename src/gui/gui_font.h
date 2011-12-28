@@ -1,8 +1,6 @@
-/*  paramsloader.h
+/*  gui_font.h
  *
- *  Config and level pack loader.
- *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +18,27 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef GUI_FONT_H
+#define GUI_FONT_H
 
-#include "types.h"
+#include <SDL/SDL_ttf.h>
+#include <guichan.hpp>
+#include <guichan/image.hpp>
+#include <guichan/sdl.hpp>
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+class Font : public gcn::Font, public gcn::SDLImageLoader
+{
+private:
+    int height;
+    SDL_Color fg;
+    TTF_Font *font;
+public:
+    Font(const std::string &fname, int size, int *color,
+        bool bold = false, bool italic = false, bool underline = false);
+    void drawString(gcn::Graphics *graphics, const std::string &text, int x, int y);
+    virtual ~Font();
+    virtual int getHeight() const;
+    virtual int getWidth(const std::string &text) const;
+};
 
-#endif
+#endif /* GUI_FONT_H */

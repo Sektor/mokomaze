@@ -1,8 +1,6 @@
-/*  paramsloader.h
+/*  input_calibration.h
  *
- *  Config and level pack loader.
- *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +18,22 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef INPUT_CALIBRATION_H
+#define INPUT_CALIBRATION_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+typedef struct {
+    bool swap_xy;
+    bool invert_x;
+    bool invert_y;
+    float cal_x;
+    float cal_y;
+} InputCalibrationData;
 
-#endif
+void input_calibration_reset();
+int input_calibration_sample(InputCalibrationData *data, float *x, float *y, float *z);
+void input_calibration_adjust(InputCalibrationData *data, float *x, float *y, float *z);
+
+#endif /* INPUT_CALIBRATION_H */

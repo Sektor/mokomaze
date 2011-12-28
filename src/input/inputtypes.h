@@ -1,8 +1,6 @@
-/*  vibro.h
+/*  inputtypes.h
  *
- *  Vibro feedback routines
- *
- *  (c) 2009 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,13 +18,16 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef VIBRO_H
-#define VIBRO_H
+#ifndef INPUTTYPES_H
+#define INPUTTYPES_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-int init_vibro();
-int set_vibro(BYTE level);
-int close_vibro();
+typedef struct {
+    void (*init)();
+    void (*shutdown)();
+    void (*read)(float *x, float *y, float *z);
+} InputInterface;
 
-#endif /* VIBRO_H */
+#endif /* INPUTTYPES_H */

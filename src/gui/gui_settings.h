@@ -1,8 +1,6 @@
-/*  paramsloader.h
+/*  gui_settings.h
  *
- *  Config and level pack loader.
- *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +18,23 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef GUI_SETTINGS_H
+#define GUI_SETTINGS_H
 
-#include "types.h"
+#include <SDL/SDL.h>
+#include "../types.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
-
+#ifdef __cplusplus
+extern "C"
+{
 #endif
+
+void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_user_set_new);
+void settings_show(bool *_calibration_requested, bool *_video_set_modified, bool *_input_set_modified, bool *_vibro_set_modified);
+void settings_shutdown();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* GUI_SETTINGS_H */

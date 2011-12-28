@@ -1,33 +1,36 @@
 {
 
-    "window": {
-        "width": 480,
-        "height": 640,
-        "frame_delay": 2,
-        "fullscreen": 1
+    "levelpack": "main",
+    "level": 1,
+    "geom_x": 0,
+    "geom_y": 0,
+    "bpp": 0,
+    "fullscreen_mode": "none",
+    "frame_delay": 1,
+    "scrolling": false,
+    "input_type": "keyboard",
+    "vibro_type": "dummy",
+
+    "input_calibration_data": {
+        "swap_xy": false,
+        "invert_x": false,
+        "invert_y": false,
+        "cal_x": 0.0,
+        "cal_y": 0.0
     },
 
-    "ball": {
-        "radius": 23
+    "input_keyboard_data": {
+        "g": 0.7
     },
 
-    "hole": {
-        "radius": 28
+    "input_joystick_data": {
+        "fname": "/dev/input/js0",
+        "max_axis": 32768.0,
+        "interval": 2000
     },
 
-    "key": {
-        "radius": 24
-    },
-
-    "vibro": {
-        "enabled": 1,
-        "force": 100,
-        "interval": 100
-    },
-
-    "exec": {
-        "init": "",
-        "final": ""
+    "vibro_freeerunner_data": {
+        "duration": 33
     }
 
 }

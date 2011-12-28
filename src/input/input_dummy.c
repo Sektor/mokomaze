@@ -1,8 +1,6 @@
-/*  paramsloader.h
+/*  input_dummy.c
  *
- *  Config and level pack loader.
- *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +18,23 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#include "input_dummy.h"
 
-#include "types.h"
+static void input_init()
+{
+}
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+static void input_shutdown()
+{
+}
 
-#endif
+static void input_read(float *x, float *y, float *z)
+{
+}
+
+void input_get_dummy(InputInterface *input)
+{
+    input->init = &input_init;
+    input->shutdown = &input_shutdown;
+    input->read = &input_read;
+}

@@ -1,6 +1,6 @@
-/*  paramsloader.h
+/*  matrix.h
  *
- *  Config and level pack loader.
+ *  Matrix operations.
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
@@ -20,18 +20,11 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef MATRIX_H
+#define MATRIX_H
 
-#include "types.h"
+void MatrixInversion(float **A, int order, float **Y);
+void GetMinor(float **src, float **dest, int row, int col, int order);
+float CalcDeterminant(float **mat, int order);
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
-
-#endif
+#endif //MATRIX_H

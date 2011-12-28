@@ -1,8 +1,6 @@
 /*  types.h
  *
- *  Often used types definition
- *
- *  (c) 2009 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -23,99 +21,56 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-//#define MDIR ""
-//#define MDIR "data/"
-#define MDIR DATADIR "/mokomaze/"
-//#define MFONTDIR ""
-#define MFONTDIR FONTDIR "/"
-
-#define BYTE unsigned char
-
-//----------------------------------
+#include "dirs.h"
+#include "input/input.h"
+#include "vibro/vibro.h"
+#include "mazecore/mazetypes.h"
 
 typedef enum {
-	ACCEL_UNKNOWN,
-	ACCEL_FREERUNNER,	/* Openmoko Neo Freerunner */
-	ACCEL_HDAPS,	        /* Thinkpad HDAPS */
-} AccelType;
+    FULLSCREEN_NONE,
+    FULLSCREEN_INGAME,
+    FULLSCREEN_ALWAYS
+} FullscreenMode;
 
-//----------------------------------
-
-typedef struct {
-
-	double		x;
-	double		y;
-
-} DPoint;
+#define FULLSCREEN_NONE_STR "none"
+#define FULLSCREEN_INGAME_STR "ingame"
+#define FULLSCREEN_ALWAYS_STR "always"
 
 typedef struct {
-
-	int		x;
-	int		y;
-
-} Point;
-
-typedef struct {
-
-	int		x1;
-	int		y1;
-
-	int		x2;
-	int		y2;
-
-} Box;
-
-
-typedef struct {
-
-	int		wnd_w;
-	int		wnd_h;
-
-	int		ball_r;
-	int		hole_r;
-	int		key_r;
-
-	int		f_delay;
-        int             fullscreen;
-        
-} Config;
-
-typedef struct {
-
-	char		levelpack[128];
-	int		level;
-        float           cal_x;
-        float           cal_y;
-
+    char *levelpack;
+    int level;
+    int geom_x;
+    int geom_y;
+    int bpp;
+    bool scrolling;
+    FullscreenMode fullscreen_mode;
+    int frame_delay;
+    InputType input_type;
+    InputCalibrationData input_calibration_data;
+    InputKeyboardData input_keyboard_data;
+    InputJoystickData input_joystick_data;
+    VibroType vibro_type;
+    VibroFreerunnerData vibro_freeerunner_data;
 } User;
 
 typedef struct {
-
-	int		level;
-	int		level_set;
-	AccelType	accel;
-	int		accel_set;
-        int             cal_auto;
-        int             cal_reset;
-
+    int level;
+    bool level_set;
+    InputType input_type;
+    bool input_set;
+    VibroType vibro_type;
+    bool vibro_set;
+    int geom_x;
+    int geom_y;
+    bool geom_set;
+    int bpp;
+    bool bpp_set;
+    bool scrolling;
+    bool scrolling_set;
+    FullscreenMode fullscreen_mode;
+    bool fullscreen_mode_set;
+    bool cal_auto;
+    bool cal_reset;
 } Prompt;
-
-typedef struct {
-
-	int		boxes_count;
-	Box*		boxes;
-
-	int		holes_count;
-	Point*		holes;
-
-        int		fins_count;
-	Point*		fins;
-
-	Point		init;
-
-        int		keys_count;
-	Point*		keys;
-
-} Level;
 
 #endif /* TYPES_H */

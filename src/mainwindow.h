@@ -1,8 +1,8 @@
 /*  mainwindow.h
  *
- *  Main game routines
+ *  Main loop.
  *
- *  (c) 2009 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -23,7 +23,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-void render_window(int start_level);
+void render_window();
 
 #endif
 

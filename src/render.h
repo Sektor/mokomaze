@@ -1,6 +1,6 @@
-/*  paramsloader.h
+/*  render.h
  *
- *  Config and level pack loader.
+ *  Graphics engine.
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
@@ -20,18 +20,18 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef RENDER_H
+#define RENDER_H
 
-#include "types.h"
+#include <SDL/SDL.h>
+#include "mazecore/mazecore.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+SDL_Surface *CreateSurface(Uint32 flags, int width, int height, const SDL_Surface *display);
+void RenderLevel();
+void RedrawDesk();
+void DrawBall(int tk_px, int tk_py, float poss_z, const dReal *R, SDL_Color bcolor);
+void UpdateBufAnimation();
+void UpdateScreenAnimation();
+void InitRender();
 
-#endif
+#endif //RENDER_H

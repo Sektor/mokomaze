@@ -1,8 +1,8 @@
 /*  mainwindow.c
  *
- *  Main game routines
+ *  Main loop.
  *
- *  (c) 2009 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,1138 +20,160 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
-#include <math.h>
+#include <librsvg/rsvg.h>
+#include <librsvg/rsvg-cairo.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
-#include <SDL/SDL_thread.h>
 #include <SDL/SDL_ttf.h>
-//#define dDOUBLE
-#include <ode/ode.h>
-
-#include "types.h"
-#include "accelerometers.h"
+#include "render.h"
+#include "mazecore/mazecore.h"
+#include "mazecore/mazehelpers.h"
 #include "paramsloader.h"
-#include "vibro.h"
+#include "input/input.h"
+#include "vibro/vibro.h"
+#include "gui/gui_settings.h"
+#include "fonts.h"
+#include "types.h"
+
+#define LOG_MODULE "Main"
 #include "logging.h"
 
-#define GRAV_CONST 9.81*1.0
-int prev_px, prev_py; // for renderer
+static InputInterface input;
+static VibroInterface vibro;
+static bool input_cal_cycle = false;
+static int disp_x = 0, disp_y = 0;
 
-Config game_config;
-Level* game_levels;
-int game_levels_count;
-int cur_level;
+static int game_levels_count = 0;
+Level *game_levels = NULL;
+MazeConfig game_config;
+static Prompt arguments = {0};
+static User *user_set = NULL;
 
-int fullscreen;
-
-#define GAME_STATE_NORMAL   1
-#define GAME_STATE_FAILED   2
-#define GAME_STATE_WIN      3
-#define GAME_STATE_SAVED    4
-int game_state;
-int new_game_state;
-
-int LoadImgErrors=0;
-
-//==============================================================================
-
-#define ANIMATION_NONE      0
-#define ANIMATION_PLAYING   1
-#define ANIMATION_FINISHED  2
-typedef struct {
-
-	float		time;
-        int             stage;
-
-} Animation;
+int cur_level = 0;
+int prev_px = 0, prev_py = 0;
+int disp_bpp = 0;
 
 Animation final_anim;
 Animation *keys_anim = NULL;
-int keys_passed = 0;
-int save_key = -1;
+
+SDL_Surface *screen = NULL;
+SDL_Surface *fin_pic = NULL, *desk_pic = NULL, *wall_pic = NULL, *render_pic = NULL;
+SDL_Rect desk_rect;
+
+static int LoadImgErrors = 0;
+static bool ingame = false;
 
 //==============================================================================
-float calcdist(float x1,float y1, float x2,float y2)
-{
-    return sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
-}
 
-float calclen(float x, float y)
-{
-    return sqrt(x*x + y*y);
-}
-
-DPoint normalize(DPoint p)
-{
-    DPoint r;
-    float len = calclen(p.x, p.y);
-    r.x = p.x/len;
-    r.y = p.y/len;
-    return r;
-}
-
-int inbox(float x, float y, Box box)
-{
-    return ( (x>=box.x1) && (x<=box.x2) &&
-             (y>=box.y1) && (y<=box.y2) );
-}
-
-int incircle(float x, float y,  float cx, float cy, float cr)
-{
-    return (calcdist(x,y, cx,cy) <= cr);
-}
-
-int min(int a, int b)
-{
-    if (a<=b) return a; else return b;
-}
-int max(int a, int b)
-{
-    if (a>=b) return a; else return b;
-}
-
-float sign(float x)
-{
-    if (x<0) return -1;
-    if (x>0) return +1;
-    return 0;
-}
-
-void** alloc2d(int mi, int mj, int s, int su)
-{
-    void **res;
-    res = malloc( mi*su );
-    for(int i=0; i < mi; i++)
-    {
-        res[i] = malloc( mj*s );
-    }
-    return res;
-}
-//==============================================================================
-
-//----------------------
-#define PHYS_SCALE 100.0
-//----------------------
-
-float vibro_force_k=1;
+#define vibro_force_k  1.0
 #define MAX_BUMP_SPEED 240.0
 #define MIN_BUMP_SPEED 70.0
 void BumpVibrate(float speed)
 {
     if (speed>0)
     {
-        //log_debug("%f",speed);
+        //log_debug("BumpVibrate(%f)",speed);
         if (speed>=MIN_BUMP_SPEED)
         {
             float k = (speed-MIN_BUMP_SPEED)/(MAX_BUMP_SPEED-MIN_BUMP_SPEED);
-            if (k>1) k=1;
-            float lev = 0.27+0.73*k;
-            lev *= vibro_force_k;
-            BYTE vlevel = (BYTE)(lev*255);
-            set_vibro(vlevel);
-        }
-    }    
-}
-
-
-int fall=0;
-int fall_fixed=0;
-Point fall_hole;
-void GoFall(Point hole);
-void GoFallFixed(Point hole);
-
-int testbump(float x, float y)
-{
-
-    if (fall)
-    {
-        if (!fall_fixed)
-        {
-            if ( (x >= fall_hole.x-game_config.hole_r+game_config.ball_r) &&
-                 (x <= fall_hole.x+game_config.hole_r-game_config.ball_r) &&
-                 (y >= fall_hole.y-game_config.hole_r+game_config.ball_r) &&
-                 (y <= fall_hole.y+game_config.hole_r-game_config.ball_r) )
-                GoFallFixed(fall_hole);
-        }
-        return 0;
-    }
-
-    Point final_hole = game_levels[cur_level].fins[0];
-    float dist = calcdist(x,y, final_hole.x,final_hole.y);
-    if (dist <= game_config.hole_r)
-    {
-        GoFall(final_hole);
-        if (keys_passed == game_levels[cur_level].keys_count) //
-            new_game_state = GAME_STATE_WIN;
-        else
-            new_game_state = GAME_STATE_SAVED;
-        return 1;
-    }
-
-    for (int i=0; i<game_levels[cur_level].holes_count; i++)
-    {
-        Point hole = game_levels[cur_level].holes[i];
-        Box boundbox;
-        boundbox.x1 = hole.x - game_config.hole_r -1;
-        boundbox.y1 = hole.y - game_config.hole_r -1;
-        boundbox.x2 = hole.x + game_config.hole_r +1;
-        boundbox.y2 = hole.y + game_config.hole_r +1;
-        if (inbox(x,y, boundbox))
-        {
-            float dist = calcdist(x,y, hole.x,hole.y);
-            if (dist <= game_config.hole_r)
-            {
-                GoFall(hole);
-                new_game_state = GAME_STATE_FAILED;
-                return 1;
-            }
-        }
-    }
-
-    for (int i=0; i<game_levels[cur_level].keys_count; i++)
-    {
-        if (keys_anim[i].stage == ANIMATION_NONE)
-        {
-            Point key = game_levels[cur_level].keys[i];
-            Box boundbox;
-            boundbox.x1 = key.x - game_config.key_r -1;
-            boundbox.y1 = key.y - game_config.key_r -1;
-            boundbox.x2 = key.x + game_config.key_r +1;
-            boundbox.y2 = key.y + game_config.key_r +1;
-            if (inbox(x,y, boundbox))
-            {
-                float dist = calcdist(x,y, key.x,key.y);
-                if (dist <= game_config.key_r)
-                {
-                    keys_anim[i].stage = ANIMATION_PLAYING;
-                    keys_passed++;
-                    save_key = i;
-                    if (keys_passed == game_levels[cur_level].keys_count)
-                    {
-                        final_anim.stage = ANIMATION_PLAYING;
-                    }
-                    return 0;
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-//== ODE =======================================================================
-// dynamics and collision objects
-static dGeomID plane;
-static dSpaceID space;
-static dWorldID world;
-static dBodyID body;
-static dGeomID geom;
-static dMass m;
-static dJointGroupID contactgroup;
-//static dGeomID *walls = NULL;
-
-// this is called by dSpaceCollide when two objects in space are
-// potentially colliding.
-#define MAX_CONTACTS 8
-static void nearCallback(void *data, dGeomID o1, dGeomID o2)
-{
-    
-    dBodyID b1 = dGeomGetBody(o1);
-    dBodyID b2 = dGeomGetBody(o2);
-
-    if (b1 == b2) return;
-
-    dContact contact[MAX_CONTACTS]; // up to MAX_CONTACTS contacts
-    for (int i = 0; i < MAX_CONTACTS; i++) {
-        contact[i].surface.mode = dContactApprox1 | dContactSoftCFM | dContactSoftERP;
-        contact[i].surface.mu = 0.7f;
-        contact[i].surface.soft_erp = 0.8f;
-        contact[i].surface.soft_cfm = 0.00001f;
-    }
-
-    int numc = dCollide(o1, o2, MAX_CONTACTS, &contact[0].geom, sizeof (dContact));
-    if (numc)
-    {
-        for (int i = 0; i < numc; i++) {
-            dJointID c = dJointCreateContact(world, contactgroup, contact + i);
-            dJointAttach(c, b1, b2);
-        }
-
-        if ((o1!=plane) && (o2!=plane))
-        {
-            const dReal *Normal = contact[0].geom.normal;
-            const dReal *LinearVel = dBodyGetLinearVel(body);
-
-            float vlen = sqrt(  LinearVel[0]*LinearVel[0] +
-                                LinearVel[1]*LinearVel[1] +
-                                LinearVel[2]*LinearVel[2] );
-            float cosa = Normal[0]*LinearVel[0] +
-                         Normal[1]*LinearVel[1] +
-                         Normal[2]*LinearVel[2];
-            float pvel = vlen*cosa;
-
-            BumpVibrate(-pvel*70);
-        }
-    }
-
-}
-//-- ODE -----------------------------------------------------------------------
-
-SDL_Surface *screen;
-SDL_Surface *fin_pic, *desk_pic, *wall_pic, *render_pic;
-SDL_Rect desk_rect;
-
-BYTE *shadowbuf;
-float **hole_zeds;
-BYTE **hole_aa;
-BYTE **key_aa;
-
-void FillShadow(Box b)
-{
-    for (int y=b.y1; y<b.y2; y++)
-    {
-        int adr = game_config.wnd_w * y + b.x1;
-        for (int x=b.x1; x<b.x2; x++)
-        {
-            if ((y>=0)&&(y<screen->h)&&
-                (x>=0)&&(x<screen->w)) shadowbuf[adr]=1;
-            adr++;
+            clamp_max(k, 1);
+            int lev = (0.27+0.73*k) * vibro_force_k * 255;
+            clamp_max(lev, 255);
+            uint8_t vlevel = (uint8_t)lev;
+            vibro.bump(vlevel);
         }
     }
 }
 
-/*
-void From16BitToColor(Uint16 col, BYTE *c0, BYTE *c1, BYTE *c2)
+SDL_Surface *LoadImg(char *file)
 {
-    *c2 = (BYTE)(col & 31);
-    *c1 = (BYTE)((col >> 5) & 63);
-    *c0 = (BYTE)((col >> 11) & 31);
-}
-*/
-
-Uint16 ColorTo16Bit(BYTE c0, BYTE c1, BYTE c2)
-{
-    return (c0<<11) | (c1<<5) | (c2);
-}
-
-Uint16 Shade16BitColor(Uint16 col, float k)
-{
-    k = 1-k;
-    BYTE c0,c1,c2;
-    c2 = (BYTE)((col & 31) * k);
-    c1 = (BYTE)(((col >> 5) & 63) * k);
-    c0 = (BYTE)(((col >> 11) & 31) * k);
-    return ColorTo16Bit(c0,c1,c2);
-}
-
-Uint16 Mix16BitColor(Uint16 col, SDL_Color mix, float k)
-{
-    BYTE fc0,fc1,fc2;
-    fc2 = (col & 31)*(1-k) + mix.b*k;
-    fc1 = ((col >> 5) & 63)*(1-k) + mix.g*k;
-    fc0 = ((col >> 11) & 31)*(1-k) + mix.r*k;
-    if (fc2>31) fc2=31;
-    if (fc1>63) fc1=63;
-    if (fc0>31) fc0=31;
-
-    BYTE c0,c1,c2;
-    c2 = (BYTE)fc2;
-    c1 = (BYTE)fc1;
-    c0 = (BYTE)fc0;
-    return ColorTo16Bit(c0,c1,c2);
-}
-
-void DrawHole(int x0, int y0, int r, float grayk, float shiftk)
-{
-    for (int y=-r; y<=r; y++)
-    {
-        int adr = game_config.wnd_w*(y0+y) + (x0-r);
-        for (int x=-r; x<=r; x++)
-        {
-            if ((y0+y>=0)&&(y0+y<screen->h)&&
-                (x0+x>=0)&&(x0+x<screen->w))
-            {
-                float k = hole_zeds[x+r][y+r];
-                if (k>=0)
-                {
-                    Uint16 col;
-                    BYTE c0,c1,c2;
-                    float kk = k*shiftk;
-                    if (kk>1) kk=1.0;
-                    c0=(BYTE)((31*grayk)*kk);
-                    c1=(BYTE)((63*grayk)*kk);
-                    c2=(BYTE)((31*grayk)*kk);
-                    col = (c0<<11) | (c1<<5) | (c2);
-                    ((Uint16*)render_pic->pixels)[adr] = col;
-                }
-                else
-                {
-                    BYTE aa_k = hole_aa[x+r][y+r];
-                    if (aa_k>0)
-                    {
-                        Uint16 col = ((Uint16*)render_pic->pixels)[adr];
-                        col = Shade16BitColor(col, aa_k/16.0);
-                        ((Uint16*)render_pic->pixels)[adr] = col;
-                    }
-                }
-            }
-            adr++;
-        }
-    }
-}
-
-void DrawKey(int x0, int y0, int r, float anim)
-{
-    SDL_Color mix;
-    mix.unused = 0;
-    mix.r = (BYTE)( 6*(1.0-anim) + 28*anim);
-    mix.g = (BYTE)(24*(1.0-anim) + 28*anim);
-    mix.b = (BYTE)(18*(1.0-anim) +  0*anim);
-       
-    Uint16 def_color = ColorTo16Bit(mix.r, mix.g, mix.b);
-    for (int y=-r; y<=r; y++)
-    {
-        int adr = game_config.wnd_w*(y0+y) + (x0-r);
-        for (int x=-r; x<=r; x++)
-        {
-            if ((y0+y>=0)&&(y0+y<screen->h)&&
-                (x0+x>=0)&&(x0+x<screen->w))
-            {
-                BYTE aa_k = key_aa[x+r][y+r];
-                if (aa_k>0)
-                {
-                    Uint16 col;
-                    if (aa_k==16)
-                    {
-                        col = def_color;
-                    }
-                    else
-                    {
-                        col = ((Uint16*)screen->pixels)[adr];
-                        col = Mix16BitColor(col, mix, aa_k/16.0);
-                    }
-                    ((Uint16*)screen->pixels)[adr] = col;
-                }
-            }
-            adr++;
-        }
-    }
-}
-
-void TryToShadow(int x, int y, float k)
-{
-    int adr = y*game_config.wnd_w + x;
-    if (shadowbuf[adr]) return;
-    Uint16 col = Shade16BitColor( ((Uint16*)render_pic->pixels)[adr], k );
-    ((Uint16*)render_pic->pixels)[adr] = col;
-}
-
-void RedrawDesk()
-{
-    SDL_BlitSurface(render_pic, &desk_rect, screen, &desk_rect);
-}
-
-void ZeroAnim()
-{
-    for (int i=0; i<game_levels[cur_level].keys_count; i++)
-    {
-        keys_anim[i].stage = ANIMATION_NONE;
-        keys_anim[i].time = 0;
-    }
-    final_anim.stage = ANIMATION_NONE;
-    final_anim.time = 0;
-
-    keys_passed = 0;
-    save_key = -1;
-}
-
-void RenderLevel()
-{
-    if (keys_anim) free(keys_anim);
-    keys_anim = (Animation*)malloc(game_levels[cur_level].keys_count * sizeof(Animation));
-
-    ZeroAnim();
-    
-//-- Prepare background --------------------------------------------------------
-    SDL_BlitSurface(desk_pic, &desk_rect, render_pic, &desk_rect);
-    for (int i=0; i<game_config.wnd_w*game_config.wnd_h; i++)
-        shadowbuf[i]=0;
-
-//-- Draw the walls ------------------------------------------------------------
-    int b_co = game_levels[cur_level].boxes_count;
-    Box *bxs = game_levels[cur_level].boxes;
-    for (int i=0; i<b_co; i++)
-    {
-        SDL_Rect wall_rect;
-        wall_rect.x = bxs[i].x1; wall_rect.y = bxs[i].y1;
-        wall_rect.w = bxs[i].x2 - bxs[i].x1;
-        wall_rect.h = bxs[i].y2 - bxs[i].y1;
-        SDL_BlitSurface(wall_pic, &wall_rect, render_pic, &wall_rect);
-        FillShadow(bxs[i]);
-    }
-
-//-- Generate shadows-----------------------------------------------------------
-    for (int i=0; i<b_co; i++)
-    {
-        int x,y;
-        int x1,y1;
-        int x2,y2;
-
-        //light vertical lines
-        y1 = max(bxs[i].y1-1, 0);
-        y2 = min(bxs[i].y2+0, game_config.wnd_h-1);
-        x  = bxs[i].x1-1;
-        if (x>=0)
-            for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.6);
-        x  = bxs[i].x2+0;
-        if (x<game_config.wnd_w)
-            for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.6);
-
-        //light horisontal lines
-        x1 = max(bxs[i].x1, 0);
-        x2 = min(bxs[i].x2-1, game_config.wnd_w-1);
-        y  = bxs[i].y1-1;
-        if (y>=0)
-            for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.6);
-        y  = bxs[i].y2+0;
-        if (y<game_config.wnd_h)
-            for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.6);
-
-        //dark vertical lines
-        y1 = max(bxs[i].y1-1, 0);
-        y2 = min(bxs[i].y2+0, game_config.wnd_h-1);
-        x  = bxs[i].x1-2;
-        if (x>=0)
-            for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.3);
-        x  = bxs[i].x2+1;
-        if (x<game_config.wnd_w)
-            for (y=y1; y<=y2; y++)
-                TryToShadow(x,y,0.3);
-
-        //dark horisontal lines
-        x1 = max(bxs[i].x1-1, 0);
-        x2 = min(bxs[i].x2+0, game_config.wnd_w-1);
-        y  = bxs[i].y1-2;
-        if (y>=0)
-            for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.3);
-        y  = bxs[i].y2+1;
-        if (y<game_config.wnd_h)
-            for (x=x1; x<=x2; x++)
-                TryToShadow(x,y,0.3);
-    }
-
-//-- Draw holes ----------------------------------------------------------------
-    for (int i=0; i<game_levels[cur_level].holes_count; i++)
-    {
-        DrawHole( game_levels[cur_level].holes[i].x,
-                  game_levels[cur_level].holes[i].y,
-                  game_config.hole_r,
-                  0.18, 1 );
-    }
-
-    //final hole
-    DrawHole( game_levels[cur_level].fins[0].x,
-              game_levels[cur_level].fins[0].y,
-              game_config.hole_r,
-              0.85, 0.50 );
-
-    if (game_levels[cur_level].keys_count == 0)
-    {
-        SDL_Rect om_rect;
-        int om_x0 = game_levels[cur_level].fins[0].x - fin_pic->w/2;
-        int om_y0 = game_levels[cur_level].fins[0].y - fin_pic->h/2;
-        om_rect.x = om_x0; om_rect.y = om_y0;
-        om_rect.w = fin_pic->w; om_rect.h = fin_pic->h;
-        SDL_BlitSurface(fin_pic, NULL, render_pic, &om_rect);
-    }
-//------------------------------------------------------------------------------
-}
-
-#define PHYS_BALL_SHIFT  0.02
-#define PHYS_WALL_HEIGHT ((game_config.ball_r+1)*(1+PHYS_BALL_SHIFT)*2 / PHYS_SCALE)
-#define PHYS_WALL_WIDTH  40.0
-int first_init = 1;
-void InitState()
-{
-    dGeomID wall;
-    
-    float px,py;
-    px=game_levels[cur_level].init.x; py=game_levels[cur_level].init.y;
-    prev_px=px; prev_py=py;
-
-    if (!first_init) dWorldDestroy(world);
-    first_init = 0;
-
-    fall = 0;
-    fall_fixed = 0;
-
-    // create world
-    world = dWorldCreate ();
-    space = dHashSpaceCreate (0);
-    dWorldSetGravity (world,0,0, -GRAV_CONST*0.5);
-    dWorldSetCFM (world,1e-5);
-    plane = dCreatePlane (space,0,0,1,0);
-
-    //TODO: adjust
-    dWorldSetContactSurfaceLayer(world, 0.00001f);
-    dWorldSetContactMaxCorrectingVel(world,1);
-
-    int b_co = game_levels[cur_level].boxes_count;
-    Box *bxs = game_levels[cur_level].boxes;
-
-    for (int i=0; i<b_co; i++)
-    {
-        float boxr_x, boxr_y, boxr_w, boxr_h;
-        boxr_x=(bxs[i].x2 + bxs[i].x1)/2.0;
-        boxr_y=(bxs[i].y2 + bxs[i].y1)/2.0;
-        boxr_w=(bxs[i].x2 - bxs[i].x1);
-        boxr_h=(bxs[i].y2 - bxs[i].y1);
-        wall = dCreateBox(space, boxr_w/PHYS_SCALE, boxr_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
-        dGeomSetPosition(wall, boxr_x/PHYS_SCALE, boxr_y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-    }
-
-//------------------------------------------------------------------------------
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, PHYS_WALL_WIDTH/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, game_config.wnd_w/2.0/PHYS_SCALE, (-PHYS_WALL_WIDTH/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, PHYS_WALL_WIDTH/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, game_config.wnd_w/2.0/PHYS_SCALE, (game_config.wnd_h+PHYS_WALL_WIDTH/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, PHYS_WALL_WIDTH/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, (-PHYS_WALL_WIDTH)/2.0/PHYS_SCALE, game_config.wnd_h/2.0/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, PHYS_WALL_WIDTH/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, (game_config.wnd_w+PHYS_WALL_WIDTH/2.0)/PHYS_SCALE, game_config.wnd_h/2.0/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-    //-- top --------
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_WIDTH/PHYS_SCALE);
-    dGeomSetPosition(wall, game_config.wnd_w/2.0/PHYS_SCALE, game_config.wnd_h/2.0/PHYS_SCALE, (PHYS_WALL_HEIGHT + PHYS_WALL_WIDTH/2.0/PHYS_SCALE));
-    //--------------
-
-    contactgroup = dJointGroupCreate(0);
-    // create object
-    body = dBodyCreate (world);
-    geom = dCreateSphere (space, game_config.ball_r/PHYS_SCALE);
-    dMassSetSphere (&m,1,game_config.ball_r/PHYS_SCALE);
-    dBodySetMass (body,&m);
-    dGeomSetBody (geom,body);
-    // set initial position
-    int ix,iy;
-    if (save_key<0)
-    {
-        ix = px;
-        iy = py;
-    }
-    else
-    {
-        ix = game_levels[cur_level].keys[save_key].x;
-        iy = game_levels[cur_level].keys[save_key].y;
-    }
-    dBodySetPosition ( body, ix/PHYS_SCALE, iy/PHYS_SCALE,
-                       (game_config.ball_r/PHYS_SCALE)*(1+PHYS_BALL_SHIFT) );
-//------------------------------------------------------------------------------
-
-    RedrawDesk();
-}
-
-#define PHYS_HOLE_DEPTH (game_config.ball_r*2 / PHYS_SCALE)
-void GoFall(Point hole)
-{
-    dGeomID wall;
-
-    dWorldSetGravity (world,0,0, -(GRAV_CONST*0.5)*1.6);
-
-    dGeomPlaneSetParams (plane, 0,0,1, -PHYS_HOLE_DEPTH);
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_HOLE_DEPTH);
-    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y-game_config.hole_r-game_config.ball_r/2.0)/PHYS_SCALE, -PHYS_HOLE_DEPTH/2.0);
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_HOLE_DEPTH);
-    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y+game_config.hole_r+game_config.ball_r/2.0)/PHYS_SCALE, -PHYS_HOLE_DEPTH/2.0);
-
-    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_HOLE_DEPTH);
-    dGeomSetPosition(wall, (hole.x+game_config.hole_r+game_config.ball_r/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, -PHYS_HOLE_DEPTH/2.0);
-
-    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_HOLE_DEPTH);
-    dGeomSetPosition(wall, (hole.x-game_config.hole_r-game_config.ball_r/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, -PHYS_HOLE_DEPTH/2.0);
-
-    //----
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y-game_config.hole_r-game_config.ball_r*3.0/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y+game_config.hole_r+game_config.ball_r*3.0/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, (hole.x+game_config.hole_r+game_config.ball_r*3.0/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, (hole.x-game_config.hole_r-game_config.ball_r*3.0/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    fall = 1;
-    fall_hole = hole;
-}
-
-void GoFallFixed(Point hole)
-{
-    dGeomID wall;
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y-game_config.hole_r-game_config.ball_r/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, game_config.wnd_w/PHYS_SCALE, game_config.ball_r/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, hole.x/PHYS_SCALE, (hole.y+game_config.hole_r+game_config.ball_r/2.0)/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, (hole.x+game_config.hole_r+game_config.ball_r/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    wall = dCreateBox(space, game_config.ball_r/PHYS_SCALE, game_config.wnd_h/PHYS_SCALE, PHYS_WALL_HEIGHT);
-    dGeomSetPosition(wall, (hole.x-game_config.hole_r-game_config.ball_r/2.0)/PHYS_SCALE, hole.y/PHYS_SCALE, PHYS_WALL_HEIGHT/2.0);
-
-    fall_fixed = 1;
-}
-
-
-SDL_Surface* CreateSurface(Uint32 flags,int width,int height,const SDL_Surface* display)
-{
-  const SDL_PixelFormat fmt = *(display->format);
-  return SDL_CreateRGBSurface(flags,width,height,
-                  fmt.BitsPerPixel,
-                  fmt.Rmask,fmt.Gmask,fmt.Bmask,fmt.Amask);
-}
-
-void DrawBlended(SDL_Surface* from, SDL_Surface* to, float k)
-{
-    for (int i=0; i<from->w*from->h; i++)
-    {
-        Uint32 c = ((Uint32*)from->pixels)[i];
-        BYTE a = ((c & from->format->Amask) >> from->format->Ashift) * k;
-        c &= ~from->format->Amask;
-        c |= a << from->format->Ashift;
-        ((Uint32*)to->pixels)[i] = c;
-    }
-}
-
-SDL_Surface* LoadImg(char *file)
-{
-    SDL_Surface* res = IMG_Load(file);
+    SDL_Surface *res = IMG_Load(file);
     if (res==NULL)
     {
-        log_error("Main: can't load image '%s'.", file);
+        log_error("can't load image '%s'", file);
         LoadImgErrors++;
     }
     return res;
 }
 
-
-//------------------------------------------------------------------------------
-//-- Matrix operations ---------------------------------------------------------
-//------------------------------------------------------------------------------
-void MatrixInversion(float **A, int order, float **Y);
-int GetMinor(float **src, float **dest, int row, int col, int order);
-float CalcDeterminant( float **mat, int order);
-
-// matrix inversion
-// the result is put in Y
-void MatrixInversion(float **A, int order, float **Y)
+SDL_Surface *LoadSvg(char *fname, int hor_width, int hor_height, bool rot)
 {
-     // get the determinant of a
-     float det = 1.0/CalcDeterminant(A,order);
-
-     // memory allocation
-     float *temp = malloc( (order-1)*(order-1)*sizeof(float) );
-     float **minor = malloc( (order-1)*sizeof(float*) );
-     for(int i=0;i<order-1;i++)
-         minor[i] = temp+(i*(order-1));
-
-     for(int j=0;j<order;j++)
-     {
-         for(int i=0;i<order;i++)
-         {
-             // get the co-factor (matrix) of A(j,i)
-             GetMinor(A,minor,j,i,order);
-             Y[i][j] = det*CalcDeterminant(minor,order-1);
-             if( (i+j)%2 == 1)
-                 Y[i][j] = -Y[i][j];
-         }
-     }
-
-     // release memory
-     //minor[0];
-     //minor;
-     free(temp);
-     free(minor);
- }
-
-// calculate the cofactor of element (row,col)
-int GetMinor(float **src, float **dest, int row, int col, int order)
-{
-    // indicate which col and row is being copied to dest
-    int colCount=0,rowCount=0;
-
-    for(int i = 0; i < order; i++ )
+    rsvg_init();
+    GError *error = NULL;
+    RsvgHandle *rsvg_handle = rsvg_handle_new_from_file(fname, &error);
+    if (!rsvg_handle)
     {
-         if( i != row )
-         {
-             colCount = 0;
-            for(int j = 0; j < order; j++ )
-            {
-                 // when j is not the element
-                 if( j != col )
-                 {
-                     dest[rowCount][colCount] = src[i][j];
-                     colCount++;
-                 }
-            }
-            rowCount++;
-         }
-     }
+        log_error("can't load image '%s'", fname);
+        LoadImgErrors++;
+        return NULL;
+    }
+    RsvgDimensionData dimensions;
+    rsvg_handle_get_dimensions(rsvg_handle, &dimensions);
+    int svg_width = dimensions.width;
+    int svg_height = dimensions.height;
 
-     return 1;
- }
+    float svg_koef = (float)svg_width / svg_height;
+    float hor_koef = (float)hor_width / hor_height;
+    float scale = (svg_koef > hor_koef ? (float)hor_height / svg_height : (float)hor_width / svg_width);
 
-// Calculate the determinant recursively.
-float CalcDeterminant(float **mat, int order)
-{
-    // order must be >= 0
-    // stop the recursion when matrix is a single element
-    if( order == 1 )
-        return mat[0][0];
+    int scaled_width = (int)(svg_width * scale);
+    int scaled_height = (int)(svg_height * scale);
 
-    // the determinant value
-    float det = 0;
+    int res_width = ( rot ? hor_height : hor_width );
+    int res_height = ( rot ? hor_width : hor_height );
 
-     // allocate the cofactor matrix
-    float **minor;
-    minor = malloc( sizeof(float*)*(order-1) );
-    for(int i=0;i<order-1;i++)
-        minor[i] = malloc( sizeof(float)*(order-1) );
+    int stride = res_width * 4; /* 4 bytes/pixel (32bpp RGBA) */
+    void *image = calloc(stride * res_height, 1);
+    cairo_surface_t *cairo_surf = cairo_image_surface_create_for_data(
+            image, CAIRO_FORMAT_ARGB32,
+            res_width, res_height, stride);
+    cairo_t *cr = cairo_create(cairo_surf);
 
-    for(int i = 0; i < order; i++ )
+    if (rot)
     {
-        // get minor of element (0,i)
-        GetMinor( mat, minor, 0, i , order);
-        // the recursion is here!
-        det += pow( -1.0, i ) * mat[0][i] * CalcDeterminant( minor,order-1 );
+        cairo_translate(cr, -(scaled_height-res_width)/2, res_height+(scaled_width-res_height)/2);
+        cairo_scale(cr, scale, scale);
+        cairo_rotate(cr, -M_PI/2);
+    }
+    else
+    {
+        cairo_translate(cr, -(scaled_width-res_width)/2, -(scaled_height-res_height)/2);
+        cairo_scale(cr, scale, scale);
     }
 
-    // release memory
-    for(int i=0;i<order-1;i++)
-        free(minor[i]);
-    free(minor);
+    rsvg_handle_render_cairo(rsvg_handle, cr);
 
-    return det;
-}
-//------------------------------------------------------------------------------
+    cairo_surface_finish(cairo_surf);
+    cairo_destroy(cr);
+    rsvg_term();
 
-//------------------------------------------------------------------------------
-//-- Draw the ball -------------------------------------------------------------
-//------------------------------------------------------------------------------
-float matrix[16];
-float **a, **a_1;
-float **zeds;
-BYTE **ball_aa;
-int rad;
+    uint32_t rmask = 0x00ff0000;
+    uint32_t gmask = 0x0000ff00;
+    uint32_t bmask = 0x000000ff;
+    uint32_t amask = 0xff000000;
+    //Notice that it matches CAIRO_FORMAT_ARGB32
+    SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
+            (void*) image,
+            res_width, res_height,
+            32, //4 bytes/pixel = 32bpp
+            stride,
+            rmask, gmask, bmask, amask);
 
-void texSmooth(BYTE* c0, BYTE* c1, BYTE* c2, SDL_Color secc, float fixx)
-{
-    *c0 = (*c0)*(0.5+fixx) + secc.r*(0.5-fixx);
-    *c1 = (*c1)*(0.5+fixx) + secc.g*(0.5-fixx);
-    *c2 = (*c2)*(0.5+fixx) + secc.b*(0.5-fixx);
-    if (*c0>31) *c0=31; if (*c1>63) *c1=63; if (*c2>31) *c1=31;
-}
-
-void DrawBall(int tk_px, int tk_py, float poss_z, const dReal *R, SDL_Color bcolor)
-{
-    //prepare to draw the ball
-    matrix[0]=R[0];
-    matrix[1]=R[4];
-    matrix[2]=R[8];
-    matrix[3]=0;
-    matrix[4]=R[1];
-    matrix[5]=R[5];
-    matrix[6]=R[9];
-    matrix[7]=0;
-    matrix[8]=R[2];
-    matrix[9]=R[6];
-    matrix[10]=R[10];
-    matrix[11]=0;
-    matrix[12]=0;
-    matrix[13]=0;
-    matrix[14]=0;
-    matrix[15]=1;
-
-    a[0][0]=matrix[0];  a[0][1]=matrix[1];  a[0][2]=matrix[2];
-    a[1][0]=matrix[4];  a[1][1]=matrix[5];  a[1][2]=matrix[6];
-    a[2][0]=matrix[8];  a[2][1]=matrix[9];  a[2][2]=matrix[10];
-
-    MatrixInversion(a, 3, a_1);
-
-    //redraw the ball at new location
-    if(SDL_MUSTLOCK(screen))
-    {
-        if(SDL_LockSurface(screen) < 0) return;
-    }
-
-    BYTE c0,c1,c2;
-    for (int x=-rad; x<=rad; x++)
-    for (int y=-rad; y<=rad; y++)
-    {
-            float z;
-
-            if ((tk_py+y>=0)&&(tk_py+y<screen->h)&&
-                (tk_px+x>=0)&&(tk_px+x<screen->w))
-            {
-                if ((z = zeds[x+rad][y+rad]) >= 0)
-                {
-                        float ksi,fi;
-                        float x0,y0,z0;
-
-                        x0 = a_1[0][0]*x + a_1[1][0]*y +a_1[2][0]*z;
-                        y0 = a_1[0][1]*x + a_1[1][1]*y +a_1[2][1]*z;
-                        z0 = a_1[0][2]*x + a_1[1][2]*y +a_1[2][2]*z;
-
-                        ksi = (float)z0/rad;
-
-                        if (x0!=0) fi  = (float)y0/x0;
-                              else fi  = 0;
-
-                        float fip;
-                        if (y0!=0) fip  = (float)x0/y0;
-                              else fip  = 0;
-
-                        #define COS_PI_4   0.7071
-                        #define COS_PI_2   0
-                        #define COS_3PI_4 -COS_PI_4
-
-                        float ksim = ksi - COS_PI_2;
-                        SDL_Color secc;
-
-                        if (ksi>=COS_PI_2)
-                        {
-                            if (fi<=0)
-                            {
-                                c0=bcolor.r; c1=bcolor.g; c2=bcolor.b;
-                                secc.r=31; secc.g=63; secc.b=31;
-                            }
-                            else
-                            {
-                                c0=31; c1=63; c2=31;
-                                secc.r=bcolor.r; secc.g=bcolor.g; secc.b=bcolor.b;
-                            }
-                        }
-                        else
-                        {
-                            if (fi<=0)
-                            {
-                                c0=31; c1=63; c2=31;
-                                secc.r=bcolor.r; secc.g=bcolor.g; secc.b=bcolor.b;
-                            }
-                            else
-                            {
-                                c0=bcolor.r; c1=bcolor.g; c2=bcolor.b;
-                                secc.r=31; secc.g=63; secc.b=31;
-                            }
-                        }
-
-                        if ((fi<0.04) && (fi>=0.0))
-                            texSmooth(&c0,&c1,&c2, secc, fi/0.08);
-                        else
-                        if ((fi>-0.04) && (fi<0.0))
-                            texSmooth(&c0,&c1,&c2, secc, -fi/0.08);
-                        else
-
-                        if ((ksim<0.02) && (ksim>=0.0))
-                            texSmooth(&c0,&c1,&c2, secc, ksim/0.04);
-                        else
-                        if ((ksim>-0.02) && (ksim<0.0))
-                            texSmooth(&c0,&c1,&c2, secc, -ksim/0.04);
-                        else
-
-                        if ((fip<0.04) && (fip>=0.0))
-                            texSmooth(&c0,&c1,&c2, secc, fip/0.08);
-                        else
-                        if ((fip>-0.04) && (fip<0.0))
-                            texSmooth(&c0,&c1,&c2, secc, -fip/0.08);
-
-                        //float cosa = z/rad;
-                        //if (cosa<0) cosa=0;
-
-                        //shader
-                        float mz = (rad-poss_z*PHYS_SCALE);
-                        if (mz>0.6*rad) mz=0.6*rad;
-                        if (mz<0) mz=0;
-                        float cosa = (z-mz)/rad;
-                        if (cosa<0) cosa=0;
-                        //if (cosa>1) cosa=1;
-
-                        c0 = (BYTE)((float)c0*cosa);
-                        c1 = (BYTE)((float)c1*cosa);
-                        c2 = (BYTE)((float)c2*cosa);
-
-                        int adr = ((tk_py+y)*screen->w + (tk_px+x));
-                        Uint16 col = (c0<<11) | (c1<<5) | (c2);
-                        ((Uint16*)screen->pixels)[adr] = col;
-                }
-                else
-                {
-                    BYTE aa_k = ball_aa[x+rad][y+rad];
-                    if (aa_k>0)
-                    {
-                        int adr = ((tk_py+y)*screen->w + (tk_px+x));
-                        Uint16 col = ((Uint16*)screen->pixels)[adr];
-                        col = Shade16BitColor(col, aa_k/16.0);
-                        ((Uint16*)screen->pixels)[adr] = col;
-                    }
-                }
-            }
-    }
-
-    if(SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-}
-//------------------------------------------------------------------------------
-
-SDL_Surface *fin_pic_blended;
-#define MAX_ANIM_TIME 0.3
-void UpdateBufAnimation(float do_phys_step)
-{
-    int kx,ky,kr;
-    int hx,hy,hr;
-    SDL_Rect fin_rect, key_rect;
-
-    hx = game_levels[cur_level].fins[0].x;
-    hy = game_levels[cur_level].fins[0].y;
-    hr = game_config.hole_r;
-
-    fin_rect.x=hx-hr; fin_rect.y=hy-hr;
-    fin_rect.w=hr*2+1; fin_rect.h=hr*2+1;
-
-    //restore background around final hole
-    if (game_levels[cur_level].keys_count > 0)
-    if (keys_passed == game_levels[cur_level].keys_count)
-    {
-        SDL_BlitSurface(render_pic, &fin_rect, screen, &fin_rect);
-    }
-
-    //restore background around keys
-    for (int i=0; i<game_levels[cur_level].keys_count; i++)
-    {
-        kx = game_levels[cur_level].keys[i].x;
-        ky = game_levels[cur_level].keys[i].y;
-        kr = game_config.key_r;
-
-        key_rect.x=kx-kr; key_rect.y=ky-kr;
-        key_rect.w=kr*2+1; key_rect.h=kr*2+1;
-
-        SDL_BlitSurface(render_pic, &key_rect, screen, &key_rect);
-    }
-
-    //draw keys with actual animation stages
-    for (int i=0; i<game_levels[cur_level].keys_count; i++)
-    {
-        kx = game_levels[cur_level].keys[i].x;
-        ky = game_levels[cur_level].keys[i].y;
-        kr = game_config.key_r;
-
-        key_rect.x=kx-kr; key_rect.y=ky-kr;
-        key_rect.w=kr*2+1; key_rect.h=kr*2+1;
-
-        float kk = 0;
-        if (keys_anim[i].stage == ANIMATION_NONE) kk=0;
-        else if (keys_anim[i].stage == ANIMATION_FINISHED) kk=1;
-        else if (keys_anim[i].stage == ANIMATION_PLAYING)
-        {
-            keys_anim[i].time += do_phys_step;
-            kk = keys_anim[i].time / MAX_ANIM_TIME;
-            if (kk>1) kk=1;
-        }
-        DrawKey( kx, ky, kr, kk );
-    }
-
-    //draw final hole with actual animation stage
-    if (game_levels[cur_level].keys_count > 0)
-    if (keys_passed == game_levels[cur_level].keys_count)
-    {
-        float kk=0;
-        if (final_anim.stage == ANIMATION_PLAYING)
-        {
-            final_anim.time += do_phys_step;
-            kk = final_anim.time / MAX_ANIM_TIME;
-            if (kk>1) kk=1;
-        }
-        else if (final_anim.stage == ANIMATION_FINISHED)
-        {
-            kk=1;
-        }
-
-        SDL_Rect om_rect;
-        om_rect.x = game_levels[cur_level].fins[0].x - fin_pic->w/2;
-        om_rect.y = game_levels[cur_level].fins[0].y - fin_pic->h/2;
-        om_rect.w = fin_pic->w; om_rect.h = fin_pic->h;
-
-        if (kk<1)
-        {
-            DrawBlended(fin_pic, fin_pic_blended, kk);
-            SDL_BlitSurface(fin_pic_blended, NULL, screen, &om_rect);
-        }
-        else
-        {
-            SDL_BlitSurface(fin_pic, NULL, screen, &om_rect);
-        }
-    }
-}
-
-void UpdateScreenAnimation()
-{
-    //updating animation on the screen
-    for (int i=0; i<game_levels[cur_level].keys_count; i++)
-    {
-        if (keys_anim[i].stage == ANIMATION_PLAYING)
-        {
-            int kx,ky,kr;
-            kx = game_levels[cur_level].keys[i].x;
-            ky = game_levels[cur_level].keys[i].y;
-            kr = game_config.key_r;
-
-            SDL_Rect key_rect;
-            key_rect.x=kx-kr; key_rect.y=ky-kr;
-            key_rect.w=kr*2+1; key_rect.h=kr*2+1;
-
-            SDL_UpdateRect(screen, key_rect.x, key_rect.y, key_rect.w, key_rect.h);
-            if (keys_anim[i].time >= MAX_ANIM_TIME) keys_anim[i].stage = ANIMATION_FINISHED;
-        }
-    }
-
-    if (final_anim.stage == ANIMATION_PLAYING)
-    {
-        SDL_Rect om_rect;
-        om_rect.x = game_levels[cur_level].fins[0].x - fin_pic->w/2;
-        om_rect.y = game_levels[cur_level].fins[0].y - fin_pic->h/2;
-        om_rect.w = fin_pic->w; om_rect.h = fin_pic->h;
-        SDL_UpdateRect(screen, om_rect.x, om_rect.y, om_rect.w, om_rect.h);
-        if (final_anim.time >= MAX_ANIM_TIME) final_anim.stage = ANIMATION_FINISHED;
-    }
+    return res;
 }
 
 //------------------------------------------------------------------------------
 
-int fastchange_step;
-SDL_TimerID fastchange_timer = 0;
-int must_fastchange = 0;
-int fastchange_dostep;
+static int fastchange_step = 0;
+static SDL_TimerID fastchange_timer = 0;
+static bool must_fastchange = false;
+static int fastchange_dostep = 0;
 #define FASTCHANGE_INTERVAL 1000
+
 Uint32 fastchange_callback (Uint32 interval, void *param)
 {
     fastchange_dostep = fastchange_step;
-    must_fastchange = 1;
+    must_fastchange = true;
     return interval;
 }
 
@@ -1160,692 +182,739 @@ void StopFastChange()
     if (fastchange_timer)
     {
         SDL_RemoveTimer(fastchange_timer);
-        fastchange_timer=0;
+        fastchange_timer = 0;
     }
-    must_fastchange = 0;
+    must_fastchange = false;
 }
 
 //------------------------------------------------------------------------------
 
-#define FONT_NAME "LiberationMono-Regular.ttf"
-#define FIRST_TRY_DELAY 500
-#define PHYS_MIN_FALL_VEL 0.09
-
-void render_window(int start_level)
+void ResetPrevPos()
 {
-	SDL_Event event;
+    maze_get_ball(&prev_px, &prev_py, NULL, NULL);
+}
 
-        game_config = GetGameConfig();
-        game_levels = GetGameLevels();
-        game_levels_count = GetGameLevelsCount();
-        vibro_force_k = GetVibroForce()/100.0;
+int get_start_level()
+{
+    int start_level = (arguments.level_set ? arguments.level-1 : user_set->level-1);
+    clamp(start_level, 0, game_levels_count-1);
+    return start_level;
+}
 
-        //== font and labels ===================================================
-        TTF_Font* font = TTF_OpenFont(MFONTDIR FONT_NAME, 24);
-        if (!font)
+void ApplyArguments()
+{
+    if (arguments.bpp_set)
+    {
+        user_set->bpp = arguments.bpp;
+    }
+    if (arguments.scrolling_set)
+    {
+        user_set->scrolling = arguments.scrolling;
+    }
+    if (arguments.geom_set)
+    {
+        user_set->geom_x = arguments.geom_x;
+        user_set->geom_y = arguments.geom_y;
+    }
+    if (arguments.cal_reset)
+    {
+        user_set->input_calibration_data.cal_x = 0;
+        user_set->input_calibration_data.cal_y = 0;
+    }
+    if (arguments.cal_auto)
+    {
+        input_calibration_reset();
+        input_cal_cycle = true;
+    }
+    if (arguments.fullscreen_mode_set)
+        user_set->fullscreen_mode = arguments.fullscreen_mode;
+    if (arguments.input_set)
+        user_set->input_type = arguments.input_type;
+    if (arguments.vibro_set)
+        user_set->vibro_type = arguments.vibro_type;
+}
+
+#define swap_t(t,x,y) \
+{ \
+    t _tmpx = x; \
+    x = y; \
+    y = _tmpx; \
+}
+
+#define swap(x,y) swap_t(int,x,y)
+
+#define rotate(x,y,w) \
+{ \
+    int _tmpx = x; \
+    x = (w-1)-y; \
+    y = _tmpx; \
+}
+
+#define scale(x,y,s) \
+{ \
+    x *= s; y *= s; \
+}
+
+#define scale_rotate(x,y,s,r,w) \
+{ \
+    scale(x, y, s); \
+    if (r) \
+        rotate(x, y, w); \
+}
+
+bool TransformGeom()
+{
+    float disp_koef = (float)disp_x / disp_y;
+    float pack_koef = (float)game_config.wnd_w / game_config.wnd_h;
+    bool rot = ( sign(disp_koef-1,0) * sign(pack_koef-1,0) < 0 );
+
+    if (rot)
+        swap(game_config.wnd_w, game_config.wnd_h);
+
+    pack_koef = (float)game_config.wnd_w / game_config.wnd_h;
+    float k1 = (float)disp_x / game_config.wnd_w;
+    float k2 = (float)disp_y / game_config.wnd_h;
+    if (user_set->scrolling)
+        swap_t(float, k1, k2);
+    float scale = (pack_koef > disp_koef ? k1 : k2);
+    int scaled_width = game_config.wnd_w * scale;
+    //int scaled_height = game_config.wnd_h * scale;
+
+    game_config.ball_r *= scale;
+    game_config.hole_r *= scale;
+    game_config.key_r *= scale;
+    game_config.wnd_w *= scale;
+    game_config.wnd_h *= scale;
+    game_config.shadow *= scale;
+
+    if (!user_set->scrolling)
+    {
+        disp_x = game_config.wnd_w;
+        disp_y = game_config.wnd_h;
+    }
+
+    for (int i=0; i<game_levels_count; i++)
+    {
+        Level *lvl = &game_levels[i];
+        for (int j=0; j<lvl->boxes_count; j++)
         {
-            log_error("Main: can't load font '" MFONTDIR FONT_NAME "'. Exiting.");
-            return;
+            Box *box = &lvl->boxes[j];
+            scale(box->x1, box->y1, scale);
+            scale(box->x2, box->y2, scale);
+            if (rot)
+            {
+                rotate(box->x1, box->y1, scaled_width);
+                rotate(box->x2, box->y2, scaled_width);
+                if (box->x1 > box->x2)
+                    swap(box->x1, box->x2);
+                if (box->y1 > box->y2)
+                    swap(box->y1, box->y2);
+            }
         }
-        SDL_Color fontColor;
-        
-//--enable-rgb-swap
+
+        for (int j=0; j<lvl->fins_count; j++)
+        {
+            Point *p = &lvl->fins[j];
+            scale_rotate(p->x, p->y, scale, rot, scaled_width);
+        }
+
+        for (int j=0; j<lvl->holes_count; j++)
+        {
+            Point *p = &lvl->holes[j];
+            scale_rotate(p->x, p->y, scale, rot, scaled_width);
+        }
+
+        for (int j=0; j<lvl->keys_count; j++)
+        {
+            Point *p = &lvl->keys[j];
+            scale_rotate(p->x, p->y, scale, rot, scaled_width);
+        }
+
+        Point *p = &lvl->init;
+        scale_rotate(p->x, p->y, scale, rot, scaled_width);
+    }
+
+    return (pack_koef < 1);
+}
+
+void SetInput()
+{
+    input.shutdown();
+
+    InputType itype = user_set->input_type;
+    if (itype == INPUT_KEYBOARD)
+        input_get_keyboard(&input, &user_set->input_keyboard_data);
+    else if (itype == INPUT_JOYSTICK)
+        input_get_joystick(&input, &user_set->input_joystick_data);
+    else
+        input_get_dummy(&input);
+
+    input.init();
+}
+
+void SetVibro()
+{
+    vibro.shutdown();
+
+    VibroType vtype = user_set->vibro_type;
+    if (vtype == VIBRO_FREERUNNER)
+        vibro_get_freerunner(&vibro, &user_set->vibro_freeerunner_data);
+    else
+        vibro_get_dummy(&vibro);
+
+    vibro.init();
+}
+
+void ChangeLevel(int new_level, bool *redraw_all, bool *wasclick)
+{
+    RedrawDesk();
+    cur_level = new_level;
+    RenderLevel();
+    RedrawDesk();
+    maze_set_level(cur_level);
+    ResetPrevPos();
+    *redraw_all = true;
+    *wasclick = true; //
+}
+
+#define MAX_CALIBRATION_SAMPLES 200
+void render_window()
+{
+    game_config = GetGameConfig();
+    game_levels = GetGameLevels();
+    game_levels_count = GetGameLevelsCount();
+
+    arguments = GetArguments();
+    user_set = GetUserSettings();
+    int start_level = get_start_level();
+
+//------------------------------------------------------------------------------
+    ApplyArguments();
+
+    const SDL_VideoInfo *video_info = SDL_GetVideoInfo();
+    if (user_set->geom_x > 0 && user_set->geom_y > 0)
+    {
+        disp_x = user_set->geom_x;
+        disp_y = user_set->geom_y;
+    }
+    else
+    {
+        disp_x = video_info->current_w;
+        disp_y = video_info->current_h;
+    }
+
+    int probe_bpp = (user_set->bpp == 0 ? video_info->vfmt->BitsPerPixel : user_set->bpp);
+    disp_bpp = (probe_bpp == 32 ? probe_bpp : 16);
+
+    bool rot = TransformGeom();
+
+//------------------------------------------------------------------------------
+    #define BTN_SPACE_KOEF 4.5
+    int btn_side = disp_y / 7;
+    int btn_space = btn_side / BTN_SPACE_KOEF;
+    int btns_padded_width = btn_side * 4 + btn_space * 5;
+    if (btns_padded_width > disp_x)
+    {
+        //btn_side = ( wnd_w - 5 * ( btn_side / BTN_SPACE_KOEF ) ) / 4
+        btn_side = (int)(disp_x / (4 + 5 / BTN_SPACE_KOEF));
+        btn_space = btn_side / BTN_SPACE_KOEF;
+    }
+    int btns_width = btn_side * 4 + btn_space * 3;
+    int font_height = btn_side / 3;
+    int font_padding = font_height / 2;
+
+//-- font and labels -----------------------------------------------------------
+    TTF_Font *font = TTF_OpenFont(DEFAULT_FONT_FILE, font_height);
+    if (!font)
+    {
+        log_error("Can't load font '%s'. Exiting.", DEFAULT_FONT_FILE);
+        return;
+    }
+
+    SDL_Surface *levelTextSurface = NULL;
+    SDL_Rect levelTextLocation;
+    levelTextLocation.y = font_padding;
+
+    SDL_Color fontColor;
 #ifndef RGBSWAP
-        fontColor.r = 231; fontColor.g = 190; fontColor.b = 114;
+    fontColor.r = 231;
+    fontColor.g = 190;
+    fontColor.b = 114;
 #else
-        fontColor.r = 114; fontColor.g = 190; fontColor.b = 231;
+    //--enable-rgb-swap
+    fontColor.r = 114;
+    fontColor.g = 190;
+    fontColor.b = 231;
 #endif
 
-        SDL_Surface *levelTextSurface, *infoTextSurface;
-        levelTextSurface = TTF_RenderText_Blended(font, "Level X/Y", fontColor);
-        infoTextSurface  = TTF_RenderText_Blended(font, "Touch the screen to continue", fontColor);
-        SDL_Rect levelTextLocation = {  (game_config.wnd_w - levelTextSurface->w) / 2,
-                                        levelTextSurface->h * 2,
-                                        0, 0 };
-        //== buttons ===========================================================
-        SDL_Surface *back_pic, *forward_pic, *reset_pic, *exit_pic;
-        SDL_Surface *back_p_pic, *forward_p_pic, *reset_p_pic; //, *exit_p_pic;
-        SDL_Surface *back_i_pic, *forward_i_pic, *reset_i_pic;
+//-- load pictures -------------------------------------------------------------
+    SDL_Surface *back_pic     = LoadSvg(MDIR "prev-main.svg", btn_side, btn_side, false);
+    SDL_Surface *forward_pic  = LoadSvg(MDIR "next-main.svg", btn_side, btn_side, false);
+    SDL_Surface *settings_pic = LoadSvg(MDIR "settings-main.svg", btn_side, btn_side, false);
+    SDL_Surface *exit_pic     = LoadSvg(MDIR "close-main.svg", btn_side, btn_side, false);
 
-	// Load Pictures
-        desk_pic = LoadImg(MDIR "desk.png");
-        wall_pic = LoadImg(MDIR "wall.png");
-        fin_pic  = LoadImg(MDIR "fin.png");
+    SDL_Surface *back_i_pic    = LoadSvg(MDIR "prev-grey.svg", btn_side, btn_side, false);
+    SDL_Surface *forward_i_pic = LoadSvg(MDIR "next-grey.svg", btn_side, btn_side, false);
 
-        back_pic    = LoadImg(MDIR "prev.png");
-        forward_pic = LoadImg(MDIR "next.png");
-        reset_pic   = LoadImg(MDIR "reset.png");
-        exit_pic    = LoadImg(MDIR "close.png");
-        //----------------------------------------------------------------------
-        back_i_pic    = LoadImg(MDIR "prev-i.png");
-        forward_i_pic = LoadImg(MDIR "next-i.png");
-        reset_i_pic   = LoadImg(MDIR "reset-i.png");
-        //----------------------------------------------------------------------
-        back_p_pic    = LoadImg(MDIR "prev-p.png");
-        forward_p_pic = LoadImg(MDIR "next-p.png");
-        reset_p_pic   = LoadImg(MDIR "reset-p.png");
-        //exit_p_pic    = IMG_Load(MDIR "exit-p.png");
+    SDL_Surface *back_p_pic    = LoadSvg(MDIR "prev-light.svg", btn_side, btn_side, false);
+    SDL_Surface *forward_p_pic = LoadSvg(MDIR "next-light.svg", btn_side, btn_side, false);
 
-        if (LoadImgErrors>0)
+    int tmpx = (rot ? game_config.wnd_h : game_config.wnd_w);
+    int tmpy = (rot ? game_config.wnd_w : game_config.wnd_h);
+    desk_pic = LoadSvg(MDIR "desk.svg", tmpx, tmpy, rot);
+    wall_pic = LoadSvg(MDIR "wall.svg", tmpx, tmpy, rot);
+    int hole_d = game_config.hole_r * 2;
+    fin_pic = LoadSvg(MDIR "openmoko.svg", hole_d, hole_d, rot);
+
+    if (LoadImgErrors > 0)
+    {
+        log_error("Some images were not loaded. Exiting.");
+        return;
+    }
+
+//-- positions of buttons ------------------------------------------------------
+    SDL_Rect gui_rect_1, gui_rect_2, gui_rect_3, gui_rect_4;
+    gui_rect_1.y = gui_rect_2.y = gui_rect_3.y = gui_rect_4.y = levelTextLocation.y + font_height + font_padding;
+    gui_rect_1.x = (disp_x - btns_width) / 2;
+    gui_rect_2.x = gui_rect_1.x + btn_side + btn_space;
+    gui_rect_3.x = gui_rect_2.x + btn_side + btn_space;
+    gui_rect_4.x = gui_rect_3.x + btn_side + btn_space;
+//-- for click detection -------------------------------------------------------
+    Box gui_box_1, gui_box_2, gui_box_3, gui_box_4;
+    gui_box_1.x1 = gui_rect_1.x;
+    gui_box_1.y1 = gui_rect_1.y;
+    gui_box_1.x2 = gui_rect_1.x + btn_side;
+    gui_box_1.y2 = gui_rect_1.y + btn_side;
+    gui_box_2.x1 = gui_rect_2.x;
+    gui_box_2.y1 = gui_rect_2.y;
+    gui_box_2.x2 = gui_rect_2.x + btn_side;
+    gui_box_2.y2 = gui_rect_2.y + btn_side;
+    gui_box_3.x1 = gui_rect_3.x;
+    gui_box_3.y1 = gui_rect_3.y;
+    gui_box_3.x2 = gui_rect_3.x + btn_side;
+    gui_box_3.y2 = gui_rect_3.y + btn_side;
+    gui_box_4.x1 = gui_rect_4.x;
+    gui_box_4.y1 = gui_rect_4.y;
+    gui_box_4.x2 = gui_rect_4.x + btn_side;
+    gui_box_4.y2 = gui_rect_4.y + btn_side;
+
+    /* Window initialization */
+    ingame = true;
+    Uint32 sdl_flags = SDL_SWSURFACE;
+    if (user_set->fullscreen_mode != FULLSCREEN_NONE)
+        sdl_flags |= SDL_FULLSCREEN;
+    SDL_Surface *disp = SDL_SetVideoMode(disp_x, disp_y, disp_bpp, sdl_flags);
+    if (disp == NULL)
+    {
+        log_error("Can't set video mode %dx%dx%dbpp. Exiting.", disp_x, disp_y, disp_bpp);
+        return;
+    }
+    screen = disp;
+    SDL_Surface *gui_surface = disp;
+    SDL_WM_SetCaption("Mokomaze", "Mokomaze");
+
+    //create surface for rendering the level
+    render_pic = CreateSurface(SDL_SWSURFACE, game_config.wnd_w, game_config.wnd_h, disp);
+
+    if (user_set->scrolling)
+        screen = CreateSurface(SDL_SWSURFACE, game_config.wnd_w, game_config.wnd_h, disp);
+
+    if (user_set->fullscreen_mode != FULLSCREEN_NONE)
+        SDL_ShowCursor(!ingame);
+
+    desk_rect.x = 0;
+    desk_rect.y = 0;
+    desk_rect.w = game_config.wnd_w;
+    desk_rect.h = game_config.wnd_h;
+
+    SDL_Rect ball_rect;
+    SDL_Rect hole_rect;
+    hole_rect.w = hole_d;
+    hole_rect.h = hole_d; //
+
+    int disp_scroll_border = min(disp_x, disp_y) * 0.27;
+    SDL_Rect screen_rect;
+    screen_rect.x = 0;
+    screen_rect.y = 0;
+    screen_rect.w = disp_x;
+    screen_rect.h = disp_y;
+    SDL_Rect disp_rect;
+    disp_rect = screen_rect;
+    
+    SDL_Color ballColor;
+    ballColor.r = 255;
+    ballColor.g = 127;
+    ballColor.b = 0;
+
+    User user_set_new = *user_set;
+    bool video_set_modified = false;
+
+    /* Settings window initialization */
+    settings_init(disp, font_height, user_set, &user_set_new);
+
+    /* Render initialization */
+    InitRender();
+
+    /* Input system initialization */
+    input_get_dummy(&input);
+    SetInput();
+
+    /* Vibro system initialization */
+    vibro_get_dummy(&vibro);
+    SetVibro();
+    
+    /* MazeCore initialization */
+    maze_init();
+    maze_set_config(game_config);
+    maze_set_vibro_callback(BumpVibrate);
+    maze_set_levels_data(game_levels, game_levels_count);
+
+    cur_level = start_level;
+    RenderLevel();
+    RedrawDesk();
+    maze_set_level(cur_level);
+    ResetPrevPos();
+
+    SDL_Event event;
+    bool done = false;
+    bool redraw_all = true;
+    bool ingame_changed = false;
+    int prev_ticks = SDL_GetTicks();
+    Point mouse = {0};
+    
+//== Game Loop =================================================================
+    while (!done)
+    {
+        bool wasclick = false;
+        bool show_settings = false;
+        while (SDL_PollEvent(&event))
         {
-            log_error("Main: some images was not loaded. Exiting.");
-            return;
-        }
-
-        //== pos
-        int btnw = back_pic->w;
-        int btnh = back_pic->h;
-        SDL_Rect gui_rect_1, gui_rect_2, gui_rect_3, gui_rect_4;
-        gui_rect_1.y = gui_rect_2.y = gui_rect_3.y = gui_rect_4.y = levelTextSurface->h * (2*2 + 1);
-        int btnspace = (game_config.wnd_w - btnw*4) / 5;
-        gui_rect_1.x = btnspace*1 + btnw*0;
-        gui_rect_2.x = btnspace*2 + btnw*1;
-        gui_rect_3.x = btnspace*3 + btnw*2;
-        gui_rect_4.x = btnspace*4 + btnw*3;
-        //== for click detection
-        Box gui_box_1, gui_box_2, gui_box_3, gui_box_4;
-        gui_box_1.x1 = gui_rect_1.x;        gui_box_1.y1 = gui_rect_1.y;
-        gui_box_1.x2 = gui_rect_1.x + btnw; gui_box_1.y2 = gui_rect_1.y + btnh;
-        gui_box_2.x1 = gui_rect_2.x;        gui_box_2.y1 = gui_rect_2.y;
-        gui_box_2.x2 = gui_rect_2.x + btnw; gui_box_2.y2 = gui_rect_2.y + btnh;
-        gui_box_3.x1 = gui_rect_3.x;        gui_box_3.y1 = gui_rect_3.y;
-        gui_box_3.x2 = gui_rect_3.x + btnw; gui_box_3.y2 = gui_rect_3.y + btnh;
-        gui_box_4.x1 = gui_rect_4.x;        gui_box_4.y1 = gui_rect_4.y;
-        gui_box_4.x2 = gui_rect_4.x + btnw; gui_box_4.y2 = gui_rect_4.y + btnh;
-        //==
-        SDL_Rect infoTextLocation  = {  (game_config.wnd_w - infoTextSurface->w) / 2,
-                                        game_config.wnd_h/2 + levelTextSurface->h*(2*2 + 1)/2 + btnh/2 - infoTextSurface->h/2,
-                                        0, 0 };
-
-        //== initializing window ===============================================
-        fullscreen = 1;
-        Uint32 sdl_flags = SDL_SWSURFACE;
-        if (game_config.fullscreen) sdl_flags |= SDL_FULLSCREEN;
-	screen = SDL_SetVideoMode(game_config.wnd_w, game_config.wnd_h, 16, sdl_flags);
-        if (screen==NULL)
-        {
-            log_error("Main: can't set video mode. Exiting.");
-            return;
-        }
-	SDL_WM_SetCaption("Mokomaze", "Mokomaze");
-
-        //create surface for rendering the level
-        render_pic = CreateSurface(SDL_SWSURFACE, game_config.wnd_w, game_config.wnd_h, screen);
-
-        if (game_config.fullscreen)
-        {
-            SDL_ShowCursor(!fullscreen);
-        }
-
-        desk_rect.x=0; desk_rect.y=0;
-        desk_rect.w=game_config.wnd_w; desk_rect.h=game_config.wnd_h;
-
-	SDL_Rect ball_rect;
-	SDL_Rect hole_rect;
-        hole_rect.w=game_config.hole_r * 2; hole_rect.h=game_config.hole_r * 2; //
-
-        //alloc buffer for speed up drawing of the shadows
-        shadowbuf = malloc(game_config.wnd_w * game_config.wnd_h);
-
-        SDL_Color ballColor;
-        ballColor.r = 31; ballColor.g = 31; ballColor.b = 0;
-
-        fin_pic_blended = CreateSurface(SDL_SWSURFACE, fin_pic->w, fin_pic->h, fin_pic); // blended final image
-
-        //init matrices for drawing the ball
-        a = (float**)alloc2d(3,3,sizeof(float),sizeof(float*));
-        a_1 = (float**)alloc2d(3,3,sizeof(float),sizeof(float*));
-        
-        //alloc ball z-values array
-        rad = game_config.ball_r-1; //
-        int diam = rad*2 + 1;
-        zeds = (float**)alloc2d(diam,diam,sizeof(float),sizeof(float*));
-        ball_aa = (BYTE**)alloc2d(diam,diam,sizeof(BYTE),sizeof(BYTE*));
-        //calculate z-values
-        for (int x=-rad; x<=rad; x++)
-        for (int y=-rad; y<=rad; y++)
-        {
-            float xdist = x*x+y*y;
-            int sample_hit=0;
-
-            if (xdist>(rad+1)*(rad+1)) sample_hit=0;
-            else if (xdist<(rad-1)*(rad-1)) sample_hit=16;
-            else
+            bool btndown = false;
+            bool btnesc = false;
+            if (event.type == SDL_QUIT)
             {
-                for (int ii=0; ii<4; ii++)
-                    for (int jj=0; jj<4; jj++)
-                        if  ((x-0.3+0.2*ii)*(x-0.3+0.2*ii)+(y-0.3+0.2*jj)*(y-0.3+0.2*jj) <= rad*rad)
-                            sample_hit++;
+                done = true;
             }
-            
-            ball_aa[x+rad][y+rad] = sample_hit;
-            if (sample_hit == 16) zeds[x+rad][y+rad] = sqrt(rad*rad - x*x - y*y);
-            else zeds[x+rad][y+rad] = -1;
-        }
-
-        //alloc hole z-values array
-        int h_rad = game_config.hole_r;
-        int h_diam = h_rad*2 + 1;
-        hole_zeds = (float**)alloc2d(h_diam,h_diam,sizeof(float),sizeof(float*));
-        hole_aa = (BYTE**)alloc2d(h_diam,h_diam,sizeof(BYTE),sizeof(BYTE*));
-        for (int x=-h_rad; x<=h_rad; x++)
-        for (int y=-h_rad; y<=h_rad; y++)
-        {
-            float xdist = x*x+y*y;
-            int sample_hit=0;
-
-            if (xdist>(h_rad+1)*(h_rad+1)) sample_hit=0;
-            else if (xdist<(h_rad-1)*(h_rad-1)) sample_hit=16;
-            else
+            else if (event.type == SDL_ACTIVEEVENT)
             {
-                for (int ii=0; ii<4; ii++)
-                    for (int jj=0; jj<4; jj++)
-                        if  ((x-0.3+0.2*ii)*(x-0.3+0.2*ii)+(y-0.3+0.2*jj)*(y-0.3+0.2*jj) <= h_rad*h_rad)
-                            sample_hit++;
-            }
-
-            hole_aa[x+h_rad][y+h_rad] = sample_hit;
-            if (sample_hit == 16) hole_zeds[x+h_rad][y+h_rad] = sqrt(h_rad*h_rad - x*x - y*y)  / h_rad;
-            else hole_zeds[x+h_rad][y+h_rad] = -1;
-        }
-
-        //alloc array for image of key
-        int k_rad = game_config.key_r;
-        int k_rad_v = k_rad*75/100;
-        int k_diam = k_rad*2 + 1;
-        key_aa = (BYTE**)alloc2d(k_diam,k_diam,sizeof(BYTE),sizeof(BYTE*));
-        for (int x=-k_rad; x<=k_rad; x++)
-        for (int y=-k_rad; y<=k_rad; y++)
-        {
-            float xdist = x*x+y*y;
-            int sample_hit=0;
-
-            if ( (xdist>(k_rad+1)*(k_rad+1)) ||
-                 (xdist<(k_rad_v-1)*(k_rad_v-1)) ) sample_hit=0;
-            else if ( (xdist<(k_rad-1)*(k_rad-1)) &&
-                      (xdist>(k_rad_v+1)*(k_rad_v+1)) ) sample_hit=16;
-            else
-            {
-                for (int ii=0; ii<4; ii++)
-                    for (int jj=0; jj<4; jj++)
-                    {
-                        float rast = (x-0.3+0.2*ii)*(x-0.3+0.2*ii)+(y-0.3+0.2*jj)*(y-0.3+0.2*jj);
-                        if ( (rast <= k_rad*k_rad) && (rast >= k_rad_v*k_rad_v) )
-                            sample_hit++;
-                    }
-            }
-
-            key_aa[x+k_rad][y+k_rad] = sample_hit;
-        }
-
-
-        /* Start the accelerometer thread */
-	accelerometer_start();
-
-        dInitODE ();
-
-
-        cur_level=start_level;
-        RenderLevel(); InitState();
-        game_state = GAME_STATE_NORMAL;
-        int first_draw = 1;
-
-        int prev_ticks = SDL_GetTicks();
-        float prev_phys_step = 0;
-
-        Point mouse = {0, 0};
-
-        int done = 0;
-        
-	while(!done) {
-
-                int wasclick=0;
-
-		while(SDL_PollEvent(&event))
+                int g = event.active.gain;
+                int s = event.active.state;
+                if (ingame && !g && ((s & SDL_APPINPUTFOCUS) || (s & SDL_APPACTIVE)))
                 {
-                    int btndown = 0;
-                    if (event.type == SDL_QUIT)
-                    {
-                        done=1;
-                    }
-                    if (event.type == SDL_ACTIVEEVENT)
-                    {
-                        int g = event.active.gain;
-                        int s = event.active.state;
-                        if (fullscreen && !g &&
-                            ((s & SDL_APPINPUTFOCUS) || (s & SDL_APPACTIVE)))
-                        {
-                            btndown = 1;
-                        }
-                    }
-                    if (event.type == SDL_MOUSEMOTION)
-                    {
-                        mouse.x = event.motion.x;
-                        mouse.y = event.motion.y;
-                    }
-                    if (event.type == SDL_MOUSEBUTTONUP)
-                    {
-                        StopFastChange();
-                    }
-                    if (event.type == SDL_MOUSEBUTTONDOWN)
-                    {
-                        btndown = 1;
-                    }
-                    if (btndown)
-                    {
-                        if (!fullscreen)
-                        {
-                            if (inbox(mouse.x,mouse.y, gui_box_1))
-                            {
-                                if (cur_level > 0)
-                                {
-                                    SDL_BlitSurface(back_p_pic, NULL, screen, &gui_rect_1);
-                                    SDL_UpdateRect(screen, gui_rect_1.x,gui_rect_1.y,gui_rect_1.w,gui_rect_1.h);
-                                    
-                                    RedrawDesk();
-                                    cur_level--;
-                                    RenderLevel(); InitState();
-                                    game_state = GAME_STATE_NORMAL;
-                                    first_draw=1;
-                                    wasclick=1; //
-
-                                    fastchange_step = -10;
-                                    StopFastChange();
-                                    fastchange_timer = SDL_AddTimer(FASTCHANGE_INTERVAL, fastchange_callback, NULL);
-                                }
-                                continue;
-                            }
-
-                            if (inbox(mouse.x,mouse.y, gui_box_2))
-                            {
-                                if (cur_level < game_levels_count-1)
-                                {
-                                    SDL_BlitSurface(forward_p_pic, NULL, screen, &gui_rect_2);
-                                    SDL_UpdateRect(screen, gui_rect_2.x,gui_rect_2.y,gui_rect_2.w,gui_rect_2.h);
-
-                                    RedrawDesk();
-                                    cur_level++;
-                                    RenderLevel(); InitState();
-                                    game_state = GAME_STATE_NORMAL;
-                                    first_draw=1;
-                                    wasclick=1; //
-
-                                    fastchange_step = +10;
-                                    StopFastChange();
-                                    fastchange_timer = SDL_AddTimer(FASTCHANGE_INTERVAL, fastchange_callback, NULL);
-                                }
-                                continue;
-                            }
-
-                            if (inbox(mouse.x,mouse.y, gui_box_3))
-                            {
-                                if (cur_level>0)
-                                {
-                                    SDL_BlitSurface(reset_p_pic, NULL, screen, &gui_rect_3);
-                                    SDL_UpdateRect(screen, gui_rect_3.x,gui_rect_3.y,gui_rect_3.w,gui_rect_3.h);
-
-                                    RedrawDesk();
-                                    cur_level=0;
-                                    RenderLevel(); InitState();
-                                    game_state = GAME_STATE_NORMAL;
-                                    first_draw=1;
-                                    wasclick=1; //
-                                }
-                                continue;
-                            }
-
-                            if (inbox(mouse.x,mouse.y, gui_box_4))
-                            {
-                                done=1;
-                                continue;
-                            }
-                        }
-
-                        fullscreen = !fullscreen;
-                        if (!fullscreen)
-                        {
-                            wasclick=1;
-                        }
-                        else
-                        {
-                            RedrawDesk();
-                            first_draw=1;
-                        }
-
-                        if (game_config.fullscreen)
-                        {
-                            SDL_WM_ToggleFullScreen(screen);
-                            SDL_ShowCursor(!fullscreen);
-                        }
-
-                        prev_ticks = SDL_GetTicks();
-                        prev_phys_step = 0;
-
-                    } //if (event.type == SDL_MOUSEBUTTONDOWN)
-		}
-
-                if ((!fullscreen) && (!wasclick) && (must_fastchange))
+                    btndown = true;
+                }
+            }
+            else if (event.type == SDL_MOUSEMOTION)
+            {
+                mouse.x = event.motion.x;
+                mouse.y = event.motion.y;
+            }
+            else if (event.type == SDL_MOUSEBUTTONUP)
+            {
+                StopFastChange();
+            }
+            else if (event.type == SDL_MOUSEBUTTONDOWN)
+            {
+                btndown = true;
+            }
+            else if (event.type == SDL_KEYDOWN)
+            {
+                if (event.key.keysym.sym == SDLK_ESCAPE)
                 {
-                    int new_cur_level = cur_level + fastchange_dostep;
-                    if (new_cur_level > game_levels_count-1) new_cur_level = game_levels_count-1;
-                    if (new_cur_level < 0) new_cur_level = 0;
+                    btndown = true;
+                    btnesc = true;
+                }
+            }
 
-                    if (new_cur_level != cur_level)
+            if (btndown)
+            {
+                if (!ingame)
+                {
+                    if (inbox(mouse.x, mouse.y, gui_box_1) && !btnesc)
                     {
-
-                        if (fastchange_dostep < 0)
+                        if (cur_level > 0)
                         {
-                            SDL_BlitSurface(back_p_pic, NULL, screen, &gui_rect_1);
-                            SDL_UpdateRect(screen, gui_rect_1.x,gui_rect_1.y,gui_rect_1.w,gui_rect_1.h);
-                        }
-                        else
-                        {
-                            SDL_BlitSurface(forward_p_pic, NULL, screen, &gui_rect_2);
-                            SDL_UpdateRect(screen, gui_rect_2.x,gui_rect_2.y,gui_rect_2.w,gui_rect_2.h);
-                        }
+                            SDL_BlitSurface(back_p_pic, NULL, gui_surface, &gui_rect_1);
+                            SDL_UpdateRect(gui_surface, gui_rect_1.x, gui_rect_1.y, gui_rect_1.w, gui_rect_1.h);
 
+                            ChangeLevel(cur_level-1, &redraw_all, &wasclick);
+
+                            fastchange_step = -10;
+                            StopFastChange();
+                            fastchange_timer = SDL_AddTimer(FASTCHANGE_INTERVAL, fastchange_callback, NULL);
+                        }
+                        continue;
+                    }
+                    else if (inbox(mouse.x, mouse.y, gui_box_2) && !btnesc)
+                    {
+                        if (cur_level < game_levels_count - 1)
+                        {
+                            SDL_BlitSurface(forward_p_pic, NULL, gui_surface, &gui_rect_2);
+                            SDL_UpdateRect(gui_surface, gui_rect_2.x, gui_rect_2.y, gui_rect_2.w, gui_rect_2.h);
+
+                            ChangeLevel(cur_level+1, &redraw_all, &wasclick);
+
+                            fastchange_step = +10;
+                            StopFastChange();
+                            fastchange_timer = SDL_AddTimer(FASTCHANGE_INTERVAL, fastchange_callback, NULL);
+                        }
+                        continue;
+                    }
+                    else if (inbox(mouse.x, mouse.y, gui_box_3) && !btnesc)
+                    {
+                        show_settings = true;
                         RedrawDesk();
-                        cur_level = new_cur_level;
-                        RenderLevel(); InitState();
-                        game_state = GAME_STATE_NORMAL;
-                        first_draw=1;
-                        wasclick=1; //
-
+                        redraw_all = true;
+                        wasclick = true;
+                        continue;
                     }
-                    must_fastchange = 0;
+                    else if (inbox(mouse.x, mouse.y, gui_box_4) || btnesc)
+                    {
+                        done = true;
+                        continue;
+                    }
                 }
+                ingame_changed = true;
+            } //if (btndown)
+        }
 
-                if ((!fullscreen) && (!wasclick))
+        if (ingame_changed)
+        {
+            ingame = !ingame;
+            if (!ingame)
+            {
+                wasclick = true;
+            }
+            else
+            {
+                RedrawDesk();
+                redraw_all = true;
+            }
+
+            if (user_set->fullscreen_mode == FULLSCREEN_INGAME)
+                SDL_WM_ToggleFullScreen(disp);
+            if (user_set->fullscreen_mode != FULLSCREEN_NONE)
+                SDL_ShowCursor(!ingame);
+
+            prev_ticks = SDL_GetTicks();
+            ingame_changed = false;
+        }
+
+        if ((!ingame) && (!wasclick) && (must_fastchange))
+        {
+            int new_cur_level = cur_level + fastchange_dostep;
+            clamp_max(new_cur_level, game_levels_count - 1);
+            clamp_min(new_cur_level, 0);
+
+            if (new_cur_level != cur_level)
+            {
+                if (fastchange_dostep < 0)
                 {
-                    SDL_Delay(game_config.f_delay);
-                    continue;
+                    SDL_BlitSurface(back_p_pic, NULL, gui_surface, &gui_rect_1);
+                    SDL_UpdateRect(gui_surface, gui_rect_1.x, gui_rect_1.y, gui_rect_1.w, gui_rect_1.h);
+                }
+                else
+                {
+                    SDL_BlitSurface(forward_p_pic, NULL, gui_surface, &gui_rect_2);
+                    SDL_UpdateRect(gui_surface, gui_rect_2.x, gui_rect_2.y, gui_rect_2.w, gui_rect_2.h);
                 }
 
+                ChangeLevel(new_cur_level, &redraw_all, &wasclick);
+            }
+            must_fastchange = false;
+        }
+
+        if (!ingame && !wasclick)
+        {
+            SDL_Delay(user_set->frame_delay);
+            continue;
+        }
+
+//-- physics step --------------------------------------------------------------
+        int ticks = SDL_GetTicks();
+        int delta_ticks = ticks - prev_ticks;
+        prev_ticks = ticks;
+        clamp_min(delta_ticks, 1);
+        clamp_max(delta_ticks, 1000 / 15);
+
+        float acx = 0, acy = 0;
+        input.read(&acx, &acy, NULL);
+        if (input_cal_cycle)
+            input_cal_cycle = (input_calibration_sample(&user_set->input_calibration_data, &acx, &acy, NULL) < MAX_CALIBRATION_SAMPLES);
+        input_calibration_adjust(&user_set->input_calibration_data, &acx, &acy, NULL);
+        maze_set_forces(acx, acy, 0);
+        GameState game_state = maze_step(delta_ticks);
+
+        const dReal *R;
+        int tk_px, tk_py, tk_pz;
+        maze_get_ball(&tk_px, &tk_py, &tk_pz, &R);
+        maze_get_animations(&keys_anim, &final_anim);
+//------------------------------------------------------------------------------
+
+        //restore the background
+        ball_rect.w = game_config.ball_r * 2;
+        ball_rect.h = game_config.ball_r * 2; //
+        ball_rect.x = prev_px - game_config.ball_r;
+        ball_rect.y = prev_py - game_config.ball_r;
+        SDL_BlitSurface(render_pic, &ball_rect, screen, &ball_rect);
+
+        UpdateBufAnimation();
+        DrawBall(tk_px, tk_py, tk_pz, R, ballColor);
+
+        //update the screen
+        if (!redraw_all && !user_set->scrolling)
+        {
+            int min_px, max_px;
+            int min_py, max_py;
+            if (prev_px <= tk_px)
+            {
+                min_px = prev_px;
+                max_px = tk_px;
+            }
+            else
+            {
+                min_px = tk_px;
+                max_px = prev_px;
+            }
+
+            if (prev_py <= tk_py)
+            {
+                min_py = prev_py;
+                max_py = tk_py;
+            }
+            else
+            {
+                min_py = tk_py;
+                max_py = prev_py;
+            }
+            min_px -= game_config.ball_r;
+            max_px += game_config.ball_r;
+            min_py -= game_config.ball_r;
+            max_py += game_config.ball_r;
+            clamp_min(min_px, 0);
+            clamp_max(max_px, game_config.wnd_w - 1);
+            clamp_min(min_py, 0);
+            clamp_max(max_py, game_config.wnd_h - 1);
+            SDL_UpdateRect(screen, min_px, min_py, max_px - min_px, max_py - min_py);
+            UpdateScreenAnimation();
+        }
+
+        if (user_set->scrolling)
+        {
+            clamp_min(screen_rect.x, tk_px - disp_x + disp_scroll_border);
+            clamp_max(screen_rect.x, tk_px - disp_scroll_border);
+            clamp_min(screen_rect.y, tk_py - disp_y + disp_scroll_border);
+            clamp_max(screen_rect.y, tk_py - disp_scroll_border);
+            clamp(screen_rect.x, 0, game_config.wnd_w - disp_x);
+            clamp(screen_rect.y, 0, game_config.wnd_h - disp_y);
+            SDL_BlitSurface(screen, &screen_rect, disp, &disp_rect);
+        }
+
+        prev_px = tk_px;
+        prev_py = tk_py;
+
+//-- GUI -----------------------------------------------------------------------
+        if (wasclick && !ingame && !show_settings)
+        {
+            char txt[32];
+            sprintf(txt, "Level %d/%d", cur_level + 1, game_levels_count);
+            SDL_FreeSurface(levelTextSurface);
+            levelTextSurface = TTF_RenderText_Blended(font, txt, fontColor);
+            levelTextLocation.x = (disp_x - levelTextSurface->w) / 2;
+            SDL_BlitSurface(levelTextSurface, NULL, gui_surface, &levelTextLocation);
+
+            if (cur_level > 0)
+                SDL_BlitSurface(back_pic, NULL, gui_surface, &gui_rect_1);
+            else
+                SDL_BlitSurface(back_i_pic, NULL, gui_surface, &gui_rect_1);
+
+            if (cur_level < game_levels_count - 1)
+                SDL_BlitSurface(forward_pic, NULL, gui_surface, &gui_rect_2);
+            else
+                SDL_BlitSurface(forward_i_pic, NULL, gui_surface, &gui_rect_2);
+
+            SDL_BlitSurface(settings_pic, NULL, gui_surface, &gui_rect_3);
+            SDL_BlitSurface(exit_pic, NULL, gui_surface, &gui_rect_4);
+            redraw_all = true;
+        }
+//------------------------------------------------------------------------------
+
+        //update the whole screen if needed
+        if (user_set->scrolling)
+        {
+            SDL_Flip(disp);
+        }
+        else if (redraw_all)
+        {
+            SDL_Flip(screen);
+        }
+        redraw_all = false;
+
+        if (show_settings)
+        {
+            bool _video_set_modified = false;
+            bool _input_set_modified = false;
+            bool _vibro_set_modified = false;
+            settings_show(&input_cal_cycle, &_video_set_modified, &_input_set_modified, &_vibro_set_modified);
+            if (input_cal_cycle)
+                input_calibration_reset();
+            if (_video_set_modified)
+                video_set_modified = true;
+            if (_input_set_modified)
+                SetInput();
+            if (_vibro_set_modified)
+                SetVibro();
+            SDL_GetMouseState(&mouse.x, &mouse.y);
+            ingame_changed = true;
+        }
+
+        switch (game_state)
+        {
+        case GAME_STATE_FAILED:
+            RedrawDesk();
+            maze_restart_level();
+            ResetPrevPos();
+            redraw_all = true;
+            break;
+        case GAME_STATE_SAVED:
+            RedrawDesk();
+            maze_reload_level();
+            ResetPrevPos();
+            redraw_all = true;
+            break;
+        case GAME_STATE_WIN:
+            if (++cur_level >= game_levels_count) cur_level=0;
+            RenderLevel();
+            RedrawDesk();
+            maze_set_level(cur_level);
+            ResetPrevPos();
+            redraw_all = true;
+            break;
+        default:
+            break;
+        }
+
+        SDL_Delay(user_set->frame_delay);
+    }
 //==============================================================================
-//== Phys. step ================================================================
-//==============================================================================
 
-                int ticks = SDL_GetTicks();
-                int delta_ticks = ticks - prev_ticks;
-                prev_ticks = ticks;
-                if (delta_ticks<=0) delta_ticks=1;
-                if (delta_ticks>1000/15) delta_ticks=1000/15;
+    if (video_set_modified)
+    {
+        user_set->scrolling = user_set_new.scrolling;
+        user_set->geom_x = user_set_new.geom_x;
+        user_set->geom_y = user_set_new.geom_y;
+        user_set->bpp = user_set_new.bpp;
+        user_set->fullscreen_mode = user_set_new.fullscreen_mode;
+        user_set->frame_delay = user_set_new.frame_delay;
+    }
+    
+    user_set->level = cur_level + 1;
+    SaveUserSettings();
 
-                float ax =  getacx();
-                float ay = -getacy();
-                float forcex = ax*0.45;
-                float forcey = ay*0.45;
+    settings_shutdown();
 
-                const dReal *poss;
-                const dReal *R;
-
-                //log_debug("%d", delta_ticks);
-                float phys_step = (0.013/30.0) * delta_ticks;
-                if (prev_phys_step>0) phys_step = prev_phys_step + (phys_step - prev_phys_step) * 0.6;
-                prev_phys_step = phys_step;
-
-                float do_phys_step = phys_step;
-                if (do_phys_step > 0.013/30.0*250) do_phys_step = 0.013/30.0*250;
-                if (do_phys_step <= 0) do_phys_step = 0.013/30.0; //
-
-                int wnanc=0;
-
-                if (fullscreen)
-                    for (int i=0; i<3; i++)
-                    {
-
-                        const dReal * Position = dBodyGetPosition   (body);
-                        const dReal * Rotation = dBodyGetRotation   (body);
-                        const dReal * Quaternion = dBodyGetQuaternion (body);
-                        const dReal * LinearVel = dBodyGetLinearVel  (body);
-                        const dReal * AngularVel = dBodyGetAngularVel (body);
-
-                        dReal xPosition[3];
-                        dReal xRotation[12];
-                        dReal xQuaternion[4];
-                        dReal xLinearVel[3];
-                        dReal xAngularVel[3];
-
-                        for (int j=0; j<3; j++)
-                        {
-                            xPosition[j] = Position[j];
-                            xLinearVel[j] = LinearVel[j];
-                            xAngularVel[j] = AngularVel[j];
-                        }
-                        for (int j=0; j<12; j++)
-                            xRotation[j] = Rotation[j];
-                        for (int j=0; j<4; j++)
-                            xQuaternion[j] = Quaternion[j];
-
-                        //if (i==0)
-                        if (!wnanc)
-                        {
-                            if (!fall)
-                            {
-                                dBodyAddForce(body, forcex, 0, 0);
-                                dBodyAddForce(body, 0, forcey, 0);
-
-                                //log_debug("%.4f  %.4f  %.4f", LinearVel[0], LinearVel[1], LinearVel[2]);
-                                //log_debug("%.4f  %.4f  %.4f", AngularVel[0], AngularVel[1], AngularVel[2]);
-                                float qu;
-
-                                qu=0;
-                                if (LinearVel[0] >  0.002) qu=-1;
-                                if (LinearVel[0] < -0.002) qu= 1;
-                                if (qu!=0) dBodyAddForce(body, qu*0.0017*( 0.5*GRAV_CONST*cos(asin(ax)) ), 0, 0);
-
-                                qu=0;
-                                if (LinearVel[1] >  0.002) qu=-1;
-                                if (LinearVel[1] < -0.002) qu= 1;
-                                if (qu!=0) dBodyAddForce(body, 0, qu*0.0017*( 0.5*GRAV_CONST*cos(asin(ay)) ), 0);
-
-                                qu=0;
-                                if (AngularVel[2] >  0.003) qu=-1;
-                                if (AngularVel[2] < -0.003) qu= 1;
-                                if (qu!=0) dBodyAddTorque(body, 0,0, qu*0.0005);
-                            }
-                            else //fall
-                            {
-                                float cpx = Position[0]*PHYS_SCALE;
-                                float cpy = Position[1]*PHYS_SCALE;
-                                float tkdi = calcdist(fall_hole.x,fall_hole.y, cpx,cpy);
-                                if (tkdi > game_config.hole_r)
-                                {
-                                    float tfx,tfy;
-                                    float fo = 0.25 * (tkdi-game_config.hole_r) / (game_config.hole_r*(sqrt(2)-1));
-                                    tfx = ((fall_hole.x - cpx) / tkdi) * fo;
-                                    tfy = ((fall_hole.y - cpy) / tkdi) * fo;
-                                    dBodyAddForce(body, tfx, tfy, 0);
-                                    //log_debug("%.4f %.4f",tfx,tfy);
-                                }
-                            }
-                        }
-
-                        //======================================================
-                        dSpaceCollide (space,0,&nearCallback);
-                        //dWorldSetQuickStepNumIterations(world,20);
-                        //dWorldQuickStep (world,0.01);
-                        //dWorldStep (world,0.02);
-                        dWorldStep (world, do_phys_step);
-                        dJointGroupEmpty (contactgroup);
-                        //======================================================
-
-                        poss = dGeomGetPosition (geom);
-
-                        //log_debug("%.4f %.4f %.4f",poss[0],poss[1],poss[2]);
-
-                        int nanc=0;
-                        for (int j=0; j<3; j++)
-                        {
-                            if ( poss[j] <= 0.0 )
-                            {}
-                            else if ( poss[j] > 0.0)
-                            {}
-                            else //poss[j] is NaN
-                            { nanc=1; break; }
-                        }
-
-                        if (nanc)
-                        {
-                            dBodySetPosition   (body, xPosition[0],xPosition[1],xPosition[2]);
-                            dBodySetRotation   (body, xRotation);
-                            dBodySetQuaternion (body, xQuaternion);
-                            dBodySetLinearVel  (body, xLinearVel[0],xLinearVel[1],xLinearVel[2]);
-                            dBodySetAngularVel (body, xAngularVel[0],xAngularVel[1],xAngularVel[2]);
-                            wnanc=1;
-                        }
-
-                    }
-
-                //determing new position of the ball
-                poss = dGeomGetPosition (geom);
-                R = dGeomGetRotation (geom);
-                int tk_px=poss[0]*PHYS_SCALE, tk_py=poss[1]*PHYS_SCALE;
-
-                //test if it fall out
-                testbump(tk_px, tk_py);
-
-                if (fall)
-                {
-                    const dReal *lv = dBodyGetLinearVel(body);
-                    //log_debug("%f %f %f",lv[0],lv[1],lv[2]);
-                    if ( sqrt(lv[0]*lv[0]+lv[1]*lv[1]+lv[2]*lv[2]) < PHYS_MIN_FALL_VEL )
-                        if (poss[2]*PHYS_SCALE <= -game_config.ball_r*3.0/4.0)
-                            game_state = new_game_state;
-                }
-//------------------------------------------------------------------------------
-                
-                //mem leaks?
-
-                //restore the background
-                ball_rect.w=game_config.ball_r * 2; ball_rect.h=game_config.ball_r * 2; //
-                ball_rect.x=prev_px-game_config.ball_r; ball_rect.y=prev_py-game_config.ball_r;
-                SDL_BlitSurface(render_pic, &ball_rect, screen, &ball_rect);
-
-                UpdateBufAnimation(do_phys_step);
-
-//------------------------------------------------------------------------------
-                DrawBall(tk_px, tk_py, poss[2], R, ballColor);
-//------------------------------------------------------------------------------
-
-                //updating the screen
-                if (!first_draw)
-                {
-                    int min_px, max_px;
-                    int min_py, max_py;
-                    if (prev_px <= tk_px)
-                    {
-                        min_px = prev_px;
-                        max_px = tk_px;
-                    }
-                    else
-                    {
-                        min_px = tk_px;
-                        max_px = prev_px;
-                    }
-
-                    if (prev_py <= tk_py)
-                    {
-                        min_py = prev_py;
-                        max_py = tk_py;
-                    }
-                    else
-                    {
-                        min_py = tk_py;
-                        max_py = prev_py;
-                    }
-                    min_px -= game_config.ball_r;
-                    max_px += game_config.ball_r;
-                    min_py -= game_config.ball_r;
-                    max_py += game_config.ball_r;
-                    if (min_px<0) min_px=0;
-                    if (max_px>=game_config.wnd_w) max_px=game_config.wnd_w-1;
-                    if (min_py<0) min_py=0;
-                    if (max_py>=game_config.wnd_h) max_py=game_config.wnd_h-1;
-                    SDL_UpdateRect(screen, min_px, min_py, max_px-min_px, max_py-min_py);
-
-                    UpdateScreenAnimation();
-                }
-
-                prev_px=tk_px; prev_py=tk_py;
-
-                //== GUI =======================================================
-                if ((wasclick) && (!fullscreen))
-                {
-                    char txt[32];
-                    sprintf(txt, "Level %d/%d", cur_level+1, game_levels_count);
-                    SDL_FreeSurface(levelTextSurface);
-                    levelTextSurface = TTF_RenderText_Blended(font, txt, fontColor);
-                    levelTextLocation.x = (game_config.wnd_w - levelTextSurface->w) / 2;
-                    SDL_BlitSurface(levelTextSurface, NULL, screen, &levelTextLocation);
-                    SDL_BlitSurface(infoTextSurface, NULL, screen, &infoTextLocation);
-                    
-                    if (cur_level >0)
-                        SDL_BlitSurface(back_pic, NULL, screen, &gui_rect_1);
-                    else
-                        SDL_BlitSurface(back_i_pic, NULL, screen, &gui_rect_1);
-
-                    if (cur_level < game_levels_count-1)
-                        SDL_BlitSurface(forward_pic, NULL, screen, &gui_rect_2);
-                    else
-                        SDL_BlitSurface(forward_i_pic, NULL, screen, &gui_rect_2);
-
-                    if (cur_level > 0)
-                        SDL_BlitSurface(reset_pic, NULL, screen, &gui_rect_3);
-                    else
-                        SDL_BlitSurface(reset_i_pic, NULL, screen, &gui_rect_3);
-
-                    SDL_BlitSurface(exit_pic, NULL, screen, &gui_rect_4);
-                    first_draw=1;
-                }
-
-                //update the whole screen if needed
-                if (first_draw)
-                {
-                    SDL_Flip(screen);
-                    first_draw=0;
-                }
-
-                if (game_state == GAME_STATE_FAILED)
-                {
-                    ZeroAnim();
-                    InitState();
-                    game_state = GAME_STATE_NORMAL;
-                    first_draw=1;
-                }
-
-                if (game_state == GAME_STATE_SAVED)
-                {
-                    InitState();
-                    game_state = GAME_STATE_NORMAL;
-                    first_draw=1;
-                }
-
-                if (game_state == GAME_STATE_WIN)
-                {
-                    if (cur_level == game_levels_count-1)
-                    {
-                        cur_level=0;
-                    }
-                    else
-                    {
-                        cur_level++;
-                    }
-                    RenderLevel(); InitState();
-                    game_state = GAME_STATE_NORMAL;
-                    first_draw=1;
-                }
-
-                SDL_Delay(game_config.f_delay);
-                
-	}
-
-        SaveLevel(cur_level+1);
-
-        SDL_FreeSurface(infoTextSurface);
-        SDL_FreeSurface(levelTextSurface);
-        TTF_CloseFont(font);
-
-        accelerometer_stop();
-        
+    SDL_FreeSurface(levelTextSurface);
+    TTF_CloseFont(font);
+    vibro.shutdown();
+    input.shutdown();
 }

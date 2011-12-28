@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Mokomaze
-Comment=Ball-in-the-labyrinth game
+Comment=Ball-in-a-labyrinth game
 Type=Application
 Exec=mokomaze
 Terminal=false

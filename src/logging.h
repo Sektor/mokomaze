@@ -2,7 +2,7 @@
  *
  *  Logging related functions.
  *
- *  (c) 2010 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2010-2011 Anton Olkhovik <ant007h@gmail.com>
  *  (c) 2009 Peter Tworek <tworaz666@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
@@ -35,15 +35,21 @@ typedef enum {
 
 // Main logging routine. Should not be used directly.
 // Please use log_<type> macros.
-void log_message(MESSAGE_TYPE type, char* fmt, ...);
+void log_message(MESSAGE_TYPE type, char *fmt, ...);
+
+#ifdef LOG_MODULE
+#define LOG_PREFIX LOG_MODULE ": "
+#else
+#define LOG_PREFIX
+#endif
 
 // Logging macros.
-#define log(...)    log_message(MSG, __VA_ARGS__)
-#define log_info(...)    log_message(INFO, __VA_ARGS__)
-#define log_warning(...) log_message(WARNING, __VA_ARGS__)
-#define log_error(...)   log_message(ERROR, __VA_ARGS__)
+#define log(...)    log_message(MSG, LOG_PREFIX __VA_ARGS__)
+#define log_info(...)    log_message(INFO, LOG_PREFIX __VA_ARGS__)
+#define log_warning(...) log_message(WARNING, LOG_PREFIX __VA_ARGS__)
+#define log_error(...)   log_message(ERROR, LOG_PREFIX __VA_ARGS__)
 #ifdef DEBUG
-#define log_debug(...)   log_message(DBG, __VA_ARGS__)
+#define log_debug(...)   log_message(DBG, LOG_PREFIX __VA_ARGS__)
 #else
 #define log_debug(...)
 #endif // DEBUG

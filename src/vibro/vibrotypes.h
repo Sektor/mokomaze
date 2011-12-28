@@ -1,8 +1,6 @@
-/*  paramsloader.h
+/*  vibrotypes.h
  *
- *  Config and level pack loader.
- *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,18 +18,16 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef VIBROTYPES_H
+#define VIBROTYPES_H
 
-#include "types.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+typedef struct {
+    void (*init)();
+    void (*shutdown)();
+    void (*bump)(uint8_t level);
+} VibroInterface;
 
-#endif
+#endif /* VIBROTYPES_H */

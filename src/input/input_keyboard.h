@@ -1,6 +1,4 @@
-/*  paramsloader.h
- *
- *  Config and level pack loader.
+/*  input_keyboard.h
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
@@ -20,18 +18,15 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARAMSLOADER_H
-#define PARAMSLOADER_H
+#ifndef INPUT_KEYBOARD_H
+#define INPUT_KEYBOARD_H
 
-#include "types.h"
+#include "inputtypes.h"
 
-void parse_command_line(int argc, char *argv[]);
-bool load_params();
-MazeConfig GetGameConfig();
-Level* GetGameLevels();
-int GetGameLevelsCount();
-User* GetUserSettings();
-Prompt GetArguments();
-void SaveUserSettings();
+typedef struct {
+    float g;
+} InputKeyboardData;
 
-#endif
+void input_get_keyboard(InputInterface *input, InputKeyboardData *data);
+
+#endif /* INPUT_KEYBOARD_H */
