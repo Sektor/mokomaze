@@ -350,6 +350,10 @@ static void LoadUiState()
     downVibroType->setSelectedValue<int>(user_set->vibro_type);
 }
 
+#define DEFAULT_KEYBOARD_G 0.7f
+#define DEFAULT_JOYSTICK_INTERVAL 2000
+#define DEFAULT_FR_VIBRO_DURATION 33
+
 static void SaveUiState()
 {
     // Check for modifications
@@ -372,9 +376,12 @@ static void SaveUiState()
         (user_set->input_calibration_data.invert_x != chbInputInvertX->isSelected()) ||
         (user_set->input_calibration_data.invert_y != chbInputInvertY->isSelected()) ||
         (user_set->input_joystick_data.fname != downJsFile->getSelectedValue<std::string>()) ||
-        (user_set->input_joystick_data.max_axis != downJsMax->getSelectedValue<int>());
+        (user_set->input_joystick_data.max_axis != downJsMax->getSelectedValue<int>()) ||
+        (user_set->input_keyboard_data.g != DEFAULT_KEYBOARD_G) ||
+        (user_set->input_joystick_data.interval != DEFAULT_JOYSTICK_INTERVAL);
     vibro_set_modified =
-        (user_set->vibro_type != (VibroType)downVibroType->getSelectedValue<int>());
+        (user_set->vibro_type != (VibroType)downVibroType->getSelectedValue<int>()) ||
+        (user_set->vibro_freeerunner_data.duration != DEFAULT_FR_VIBRO_DURATION);
 
     // Set new values
     user_set_new->scrolling = chbScroll->isSelected();
@@ -400,8 +407,11 @@ static void SaveUiState()
         free(user_set->input_joystick_data.fname);
     user_set->input_joystick_data.fname = strdup(downJsFile->getSelectedValue<std::string>().c_str());
     user_set->input_joystick_data.max_axis = downJsMax->getSelectedValue<int>();
+    user_set->input_keyboard_data.g = DEFAULT_KEYBOARD_G;
+    user_set->input_joystick_data.interval = DEFAULT_JOYSTICK_INTERVAL;
 
     user_set->vibro_type = (VibroType)downVibroType->getSelectedValue<int>();
+    user_set->vibro_freeerunner_data.duration = DEFAULT_FR_VIBRO_DURATION;
 
     // Display message if necessary
     if (video_set_modified)
