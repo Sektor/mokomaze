@@ -38,14 +38,14 @@
 #define LOG_MODULE "Main"
 #include "logging.h"
 
-static InputInterface input;
-static VibroInterface vibro;
+static InputInterface input = {0};
+static VibroInterface vibro = {0};
 static bool input_cal_cycle = false;
 static int disp_x = 0, disp_y = 0;
 
 static int game_levels_count = 0;
 Level *game_levels = NULL;
-MazeConfig game_config;
+MazeConfig game_config = {0};
 static Prompt arguments = {0};
 static User *user_set = NULL;
 

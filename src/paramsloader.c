@@ -33,7 +33,7 @@
 #define LOG_MODULE "Loader"
 #include "logging.h"
 
-static MazeConfig game_config;
+static MazeConfig game_config = {0};
 static Level *game_levels = NULL;
 static int game_levels_count = 0;
 static User user_set = {0};
