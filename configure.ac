@@ -41,14 +41,18 @@ AC_CHECK_LIB(guichan_sdl, gcnSDL, , [AC_MSG_ERROR([*** guichan-sdl not found!])]
 
 #--------------------------------------------------------------
 if test "x"${FONTDIR} == "x"; then
-AC_SUBST(MAZEFONTDIR, /usr/share/fonts/truetype/liberation)
+        DEFAULT_FONTDIR="/usr/share/fonts/truetype/liberation"
+        if test ! -d "$DEFAULT_FONTDIR"; then
+                DEFAULT_FONTDIR="/usr/share/fonts/truetype/ttf-liberation"
+        fi
+        AC_SUBST(MAZEFONTDIR, ${DEFAULT_FONTDIR})
 else
-AC_SUBST(MAZEFONTDIR, ${FONTDIR})
+        AC_SUBST(MAZEFONTDIR, ${FONTDIR})
 fi
 
 AC_ARG_ENABLE(rgb-swap,
-    [  --enable-rgb-swap       swap color components (R<->B) ],
-    [use_rgb_swap="yes"], [use_rgb_swap="no"])
+        [  --enable-rgb-swap       swap color components (R<->B) ],
+        [use_rgb_swap="yes"], [use_rgb_swap="no"])
 AM_CONDITIONAL(RGBSWAP, test x$use_rgb_swap != xno)
 #--------------------------------------------------------------
 
