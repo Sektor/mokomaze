@@ -41,7 +41,7 @@ AC_CHECK_LIB(guichan_sdl, gcnSDL, , [AC_MSG_ERROR([*** guichan-sdl not found!])]
 
 #--------------------------------------------------------------
 if test "x"${FONTDIR} == "x"; then
-AC_SUBST(MAZEFONTDIR, /usr/share/fonts/truetype/ttf-liberation)
+AC_SUBST(MAZEFONTDIR, /usr/share/fonts/truetype/liberation)
 else
 AC_SUBST(MAZEFONTDIR, ${FONTDIR})
 fi
