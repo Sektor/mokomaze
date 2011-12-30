@@ -59,7 +59,7 @@ JsonNode* _json_object_get_member(JsonObject *obj, const char *member_name)
 }
 JsonArray* _json_node_get_array(JsonNode *node)
 {
-    if ((!node) || (node->type != JSON_NODE_ARRAY))
+    if ((!node) || (JSON_NODE_TYPE(node) != JSON_NODE_ARRAY))
         return NULL;
     return json_node_get_array(node);
 }
