@@ -92,9 +92,13 @@ bool _json_object_get_member_boolean(JsonObject *obj, const char *member_name)
 int _json_object_get_member_int(JsonObject *obj, const char *member_name)
 {
     JSON_GET_MEMBER_NODE
-    if ((!member_node) || (json_node_get_value_type(member_node) != G_TYPE_INT))
-        return 0;
-    return json_node_get_int(member_node);
+    if (member_node)
+    {
+        GType vtype = json_node_get_value_type(member_node);
+        if (vtype == G_TYPE_INT || vtype == G_TYPE_INT64)
+            return json_node_get_int(member_node);
+    }
+    return 0;
 }
 double _json_object_get_member_double(JsonObject *obj, const char *member_name)
 {
