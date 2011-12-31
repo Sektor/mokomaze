@@ -16,7 +16,7 @@ bin_PROGRAMS = mokomaze
 # add the sources to compile for the application
 mokomaze_SOURCES = \
   main.c logging.c paramsloader.c mainwindow.c render.c matrix.c \
-  mazecore/mazecore.c vibro/vibro_freerunner.c vibro/vibro_dummy.c \
+  mazecore/mazecore.c mazecore/mazehelpers.c vibro/vibro_freerunner.c vibro/vibro_dummy.c \
   input/input_calibration.c input/input_dummy.c input/input_keyboard.c input/input_joystick.c \
   gui/gui_settings.cpp gui/gui_font.cpp gui/gui_msgbox.cpp \
   types.h logging.h paramsloader.h mainwindow.h render.h matrix.h \

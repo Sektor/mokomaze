@@ -1,4 +1,4 @@
-/*  mazehelpers.h
+/*  mazehelpers.c
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
@@ -18,22 +18,23 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MAZEHELPERS_H
-#define MAZEHELPERS_H
+#include "mazehelpers.h"
 
-#include "mazetypes.h"
+int sign(float x, float delta)
+{
+    if (x<-delta) return -1;
+    if (x>+delta) return +1;
+    return 0;
+}
 
-#define min(a, b) ((a<=b) ? a : b)
-#define max(a, b) ((a>=b) ? a : b)
-#define clamp_max(x,max) x = (x>max ? max : x)
-#define clamp_min(x,min) x = (x<min ? min : x)
-#define clamp(x,min,max) { clamp_min(x,min); clamp_max(x,max); }
-#define calcdist(x1,y1, x2,y2) sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
-#define calclen(x,y,z) sqrt(x*x + y*y + z*z)
-#define sqr(x) (x)*(x)
+bool inbox(float x, float y, Box box)
+{
+    return ( (x>=box.x1) && (x<=box.x2) &&
+             (y>=box.y1) && (y<=box.y2) );
+}
 
-int sign(float x, float delta);
-bool inbox(float x, float y, Box box);
-bool inbox_r(int x, int y, Point center, int r);
-
-#endif //MAZEHELPERS_H
+bool inbox_r(int x, int y, Point center, int r)
+{
+    return ( (x>=center.x-r) && (x<=center.x+r) &&
+             (y>=center.y-r) && (y<=center.y+r) );
+}
