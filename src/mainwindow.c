@@ -528,9 +528,6 @@ void render_window()
     desk_rect.h = game_config.wnd_h;
 
     SDL_Rect ball_rect;
-    SDL_Rect hole_rect;
-    hole_rect.w = hole_d;
-    hole_rect.h = hole_d; //
 
     int disp_scroll_border = min(disp_x, disp_y) * 0.27;
     SDL_Rect screen_rect;
