@@ -2,12 +2,25 @@
 # misc. data files
 #
 mokomazedir = $(datadir)/mokomaze
-dist_mokomaze_DATA = main.levelpack.json config.json \
-                     desk.svg wall.svg openmoko.svg filters.svg \
-                     prev.svg next.svg settings.svg close.svg \
-                     prev-main.svg next-main.svg settings-main.svg close-main.svg \
-                     prev-light.svg next-light.svg \
-                     prev-grey.svg next-grey.svg
+dist_mokomaze_DATA = \
+  main.levelpack.json \
+  config.json \
+  desk.svg \
+  wall.svg \
+  openmoko.svg \
+  filters.svg \
+  prev.svg \
+  next.svg \
+  settings.svg \
+  close.svg \
+  prev-main.svg \
+  next-main.svg \
+  settings-main.svg \
+  close-main.svg \
+  prev-light.svg \
+  next-light.svg \
+  prev-grey.svg \
+  next-grey.svg
 
 nodist_mokomaze_DATA = background.svg
 
@@ -23,13 +36,19 @@ dist_desktop_DATA = mokomaze.desktop
 appicondir = $(datadir)/pixmaps
 dist_appicon_DATA = mokomaze.png
 
-EXTRA_DIST = background.sed kde.svg \
-             mokomaze-main.svg mokomaze.sed neverlogos.svg
+EXTRA_DIST = \
+  background.sed \
+  kde.svg \
+  mokomaze-main.svg \
+  mokomaze.sed \
+  neverlogos.svg
 
 MAINTAINERCLEANFILES = Makefile.in
 
-CLEANFILES = mokomaze.png \
-             background.svg mokomaze.svg
+CLEANFILES = \
+  mokomaze.png \
+  background.svg \
+  mokomaze.svg
 
 background.svg: kde.svg background.sed
 	$(SED) -n -f $(srcdir)/background.sed < $< > $@
