@@ -127,9 +127,12 @@ void _json_object_set_member_boolean(JsonObject *obj, const char *member_name, b
 void _json_object_set_member_int(JsonObject *obj, const char *member_name, int val)
 {
     JSON_GET_MEMBER_NODE
-    if ((!member_node) || (json_node_get_value_type(member_node) != G_TYPE_INT))
-        return;
-    json_node_set_int(member_node, val);
+    if (member_node)
+    {
+        GType vtype = json_node_get_value_type(member_node);
+        if (vtype == G_TYPE_INT || vtype == G_TYPE_INT64)
+            json_node_set_int(member_node, val);
+    }
 }
 void _json_object_set_member_double(JsonObject *obj, const char *member_name, double val)
 {
