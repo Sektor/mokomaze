@@ -2,7 +2,7 @@
  *
  *  Logging related functions.
  *
- *  (c) 2010-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2010-2012 Anton Olkhovik <ant007h@gmail.com>
  *  (c) 2009 Peter Tworek <tworaz666@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.

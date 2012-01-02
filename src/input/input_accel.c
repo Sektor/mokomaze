@@ -2,7 +2,7 @@
  *
  *  Accelerometer stuff
  *
- *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2009-2012 Anton Olkhovik <ant007h@gmail.com>
  *
  *  Based on original accelerometers.c from OpenMooCow - accelerometer moobox simulator.
  *  (c) 2008 Thomas White <taw27@srcf.ucam.org>

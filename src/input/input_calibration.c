@@ -1,6 +1,6 @@
 /*  input_calibration.c
  *
- *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011-2012 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
