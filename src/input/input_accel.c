@@ -87,9 +87,9 @@ static int input_work(void *data)
 
         if (FD_ISSET(fd, &fds))
         {
-            rval = read(fd, &ev, sizeof (ev));
+            rval = read(fd, &ev, sizeof(ev));
 
-            if (rval != sizeof (ev))
+            if (rval != sizeof(ev))
             {
                 log_error("error reading data");
                 break;
