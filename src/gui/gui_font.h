@@ -1,6 +1,9 @@
 /*  gui_font.h
  *
- *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2011-2012 Anton Olkhovik <ant007h@gmail.com>
+ *
+ *  Based on a sample Guichan font class by knives.dev@gmail.com
+ *  http://docs.google.com/Doc?id=dgp8xrct_9db3zc2hc
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -26,12 +29,22 @@
 #include <guichan/image.hpp>
 #include <guichan/sdl.hpp>
 
+#define GLYPHS_COUNT 256
+
+struct Font_Glyph
+{
+    gcn::SDLImage *img;
+    int minx, maxx, miny, maxy, advance;
+};
+
 class Font : public gcn::Font, public gcn::SDLImageLoader
 {
 private:
     int height;
     SDL_Color fg;
     TTF_Font *font;
+    int ascent;
+    Font_Glyph glyphs[GLYPHS_COUNT];
 public:
     Font(const std::string &fname, int size, int *color,
         bool bold = false, bool italic = false, bool underline = false);
