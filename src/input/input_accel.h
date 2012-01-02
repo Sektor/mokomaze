@@ -1,8 +1,6 @@
-/*  input.h
+/*  input_accel.h
  *
- *  Input system.
- *
- *  (c) 2011 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,25 +18,17 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INPUT_H
-#define INPUT_H
+#ifndef INPUT_ACCEL_H
+#define INPUT_ACCEL_H
 
-#include "input_calibration.h"
-#include "input_dummy.h"
-#include "input_keyboard.h"
-#include "input_joystick.h"
-#include "input_accel.h"
+#include "inputtypes.h"
 
-typedef enum {
-    INPUT_DUMMY,
-    INPUT_KEYBOARD,
-    INPUT_JOYSTICK,
-    INPUT_ACCEL
-} InputType;
+typedef struct {
+    char *fname;
+    float max_axis;
+    int interval;
+} InputAccelData;
 
-#define INPUT_DUMMY_STR "dummy"
-#define INPUT_KEYBOARD_STR "keyboard"
-#define INPUT_JOYSTICK_STR "joystick"
-#define INPUT_ACCEL_STR "accelerometer"
+void input_get_accel(InputInterface *input, InputAccelData *data);
 
-#endif /* INPUT_H */
+#endif /* INPUT_ACCEL_H */

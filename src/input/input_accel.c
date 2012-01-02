@@ -1,6 +1,12 @@
-/*  input_joystick.c
+/*  input_accel.c
+ *
+ *  Accelerometer stuff
  *
  *  (c) 2009-2011 Anton Olkhovik <ant007h@gmail.com>
+ *
+ *  Based on original accelerometers.c from OpenMooCow - accelerometer moobox simulator.
+ *  (c) 2008 Thomas White <taw27@srcf.ucam.org>
+ *  (c) 2008 Joachim Breitner <mail@joachim-breitner.de>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -22,33 +28,51 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <linux/input.h>
-#include <linux/joystick.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
 #include "../mazecore/mazehelpers.h"
-#include "input_joystick.h"
+#include "input_accel.h"
 
-#define LOG_MODULE "Input::Joystick"
+#define LOG_MODULE "Input::Accel"
 #include "../logging.h"
+
+struct input_event {
+    struct timeval time;
+    uint16_t type;
+    uint16_t code;
+    int32_t value;
+};
+
+#define EV_SYN (0x00)
+#define EV_REL (0x02)
+#define EV_ABS (0x03)
+#define SYN_REPORT (0x00)
+#define REL_X (0x00)
+#define REL_Y (0x01)
+#define REL_Z (0x02)
+#define ABS_X (0x00)
+#define ABS_Y (0x01)
+#define ABS_Z (0x02)
 
 static SDL_Thread *thread = NULL;
 static bool finished = false;
 static float ac[3] = {0};
-static InputJoystickData params = {0};
+static InputAccelData params = {0};
 
 static int input_work(void *data)
 {
     bool *finished = (bool*)data;
 
-    int fd = open(params.fname, O_RDONLY);
+    int fd = open(params.fname, O_RDONLY, O_NONBLOCK);
+
     if (fd < 0)
     {
         log_error("error opening file `%s'", params.fname);
         return 0;
     }
 
-    struct js_event js;
+    int ac_cache[3] = {0};
+    struct input_event ev;
     while (!(*finished))
     {
         size_t rval;
@@ -63,26 +87,43 @@ static int input_work(void *data)
 
         if (FD_ISSET(fd, &fds))
         {
-            rval = read(fd, &js, sizeof(js));
-            if (rval != sizeof(js))
+            rval = read(fd, &ev, sizeof (ev));
+
+            if (rval != sizeof (ev))
             {
                 log_error("error reading data");
                 break;
             }
 
-            int n;
-            float v;
-            switch (js.type & ~JS_EVENT_INIT)
+            if (ev.type == EV_REL)
             {
-            //case JS_EVENT_BUTTON:
-            //    break;
-            case JS_EVENT_AXIS:
-                n = js.number;
-                clamp(n, 0, sizeof(ac)-1);
-                v = js.value / params.max_axis;
-                clamp(v, -1, 1);
-                ac[n] = v;
-                break;
+                if (ev.code == REL_X)
+                    ac_cache[0] = ev.value;
+                else if (ev.code == REL_Y)
+                    ac_cache[1] = ev.value;
+                else if (ev.code == REL_Z)
+                    ac_cache[2] = ev.value;
+            }
+            else if (ev.type == EV_ABS)
+            {
+                if (ev.code == ABS_X)
+                    ac_cache[0] = ev.value;
+                else if (ev.code == ABS_Y)
+                    ac_cache[1] = ev.value;
+                else if (ev.code == ABS_Z)
+                    ac_cache[2] = ev.value;
+            }
+            else if (ev.type == EV_SYN && ev.code == SYN_REPORT)
+            {
+                float acx = (float)ac_cache[0] / params.max_axis;
+                float acy = (float)ac_cache[1] / params.max_axis;
+                float acz = (float)ac_cache[2] / params.max_axis;
+                clamp(acx, -1, 1);
+                clamp(acy, -1, 1);
+                clamp(acz, -1, 1);
+                ac[0] = acx;
+                ac[1] = acy;
+                ac[2] = acz;
             }
         }
 
@@ -116,7 +157,7 @@ static void input_read(float *x, float *y, float *z)
     if (z) *z = ac[2];
 }
 
-void input_get_joystick(InputInterface *input, InputJoystickData *data)
+void input_get_accel(InputInterface *input, InputAccelData *data)
 {
     if (params.fname)
     {

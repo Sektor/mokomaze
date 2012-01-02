@@ -49,6 +49,7 @@ typedef struct {
     InputCalibrationData input_calibration_data;
     InputKeyboardData input_keyboard_data;
     InputJoystickData input_joystick_data;
+    InputAccelData input_accel_data;
     VibroType vibro_type;
     VibroFreerunnerData vibro_freeerunner_data;
 } User;

@@ -64,7 +64,7 @@ bool need_quit = false;
 
 // Constants
 #define JS_DEV "/dev/input/js"
-#define JS_DEV_TOUCHBOOK "/dev/input/accel0"
+#define ACCEL_TOUCHBOOK "/dev/input/accel0"
 
 // Issue 137: TabbedArea does not call the logic()-method of its children
 // http://code.google.com/p/guichan/issues/detail?id=137
@@ -180,12 +180,25 @@ static GenericListModel<int> *CreateGenericListModel(const int *values, uint cou
     GenericListModel<int>::ElementsVector elements;
     for (uint i = 0; i < count; i++)
     {
-        char buf[16];
+        char buf[32];
         int val = values[i];
         sprintf(buf, "%d", val);
         elements.push_back(GenericListModel<int>::Element(buf, val));
     }
     return (new GenericListModel<int>(elements));
+}
+
+static GenericListModel<float> *CreateGenericListModel(const float *values, uint count)
+{
+    GenericListModel<float>::ElementsVector elements;
+    for (uint i = 0; i < count; i++)
+    {
+        char buf[32];
+        float val = values[i];
+        sprintf(buf, "%.2f", val);
+        elements.push_back(GenericListModel<float>::Element(buf, val));
+    }
+    return (new GenericListModel<float>(elements));
 }
 
 static GenericListModel<std::string> *CreateGenericListModel(const char **values, uint count)
@@ -306,8 +319,13 @@ SuperDropDown *downInputType = NULL;
 gcn::CheckBox *chbInputSwapXy = NULL;
 gcn::CheckBox *chbInputInvertX = NULL;
 gcn::CheckBox *chbInputInvertY = NULL;
+SuperDropDown *downKbdG = NULL;
 SuperDropDown *downJsFile = NULL;
 SuperDropDown *downJsMax = NULL;
+SuperDropDown *downJsDelay = NULL;
+SuperDropDown *downAccelFile = NULL;
+SuperDropDown *downAccelMax = NULL;
+SuperDropDown *downAccelDelay = NULL;
 
 // Vibro tab stuff
 SuperDropDown *downVibroType = NULL;
@@ -344,14 +362,17 @@ static void LoadUiState()
     chbInputSwapXy->setSelected(user_set->input_calibration_data.swap_xy);
     chbInputInvertX->setSelected(user_set->input_calibration_data.invert_x);
     chbInputInvertY->setSelected(user_set->input_calibration_data.invert_y);
+    downKbdG->setSelectedValue<float>(user_set->input_keyboard_data.g);
     downJsFile->setSelectedValue<std::string>(user_set->input_joystick_data.fname);
     downJsMax->setSelectedValue<int>(user_set->input_joystick_data.max_axis);
+    downJsDelay->setSelectedValue<int>(user_set->input_joystick_data.interval);
+    downAccelFile->setSelectedValue<std::string>(user_set->input_accel_data.fname);
+    downAccelMax->setSelectedValue<int>(user_set->input_accel_data.max_axis);
+    downAccelDelay->setSelectedValue<int>(user_set->input_accel_data.interval);
 
     downVibroType->setSelectedValue<int>(user_set->vibro_type);
 }
 
-#define DEFAULT_KEYBOARD_G 0.7f
-#define DEFAULT_JOYSTICK_INTERVAL 2000
 #define DEFAULT_FR_VIBRO_DURATION 33
 
 static void SaveUiState()
@@ -375,10 +396,13 @@ static void SaveUiState()
         (user_set->input_calibration_data.swap_xy != chbInputSwapXy->isSelected()) ||
         (user_set->input_calibration_data.invert_x != chbInputInvertX->isSelected()) ||
         (user_set->input_calibration_data.invert_y != chbInputInvertY->isSelected()) ||
+        (user_set->input_keyboard_data.g != downKbdG->getSelectedValue<float>()) ||
         (user_set->input_joystick_data.fname != downJsFile->getSelectedValue<std::string>()) ||
         (user_set->input_joystick_data.max_axis != downJsMax->getSelectedValue<int>()) ||
-        (user_set->input_keyboard_data.g != DEFAULT_KEYBOARD_G) ||
-        (user_set->input_joystick_data.interval != DEFAULT_JOYSTICK_INTERVAL);
+        (user_set->input_joystick_data.interval != downJsDelay->getSelectedValue<int>()) ||
+        (user_set->input_accel_data.fname != downAccelFile->getSelectedValue<std::string>()) ||
+        (user_set->input_accel_data.max_axis != downAccelMax->getSelectedValue<int>()) ||
+        (user_set->input_accel_data.interval != downAccelDelay->getSelectedValue<int>());
     vibro_set_modified =
         (user_set->vibro_type != (VibroType)downVibroType->getSelectedValue<int>()) ||
         (user_set->vibro_freeerunner_data.duration != DEFAULT_FR_VIBRO_DURATION);
@@ -403,12 +427,17 @@ static void SaveUiState()
     user_set->input_calibration_data.swap_xy = chbInputSwapXy->isSelected();
     user_set->input_calibration_data.invert_x = chbInputInvertX->isSelected();
     user_set->input_calibration_data.invert_y = chbInputInvertY->isSelected();
+    user_set->input_keyboard_data.g = downKbdG->getSelectedValue<float>();
     if (user_set->input_joystick_data.fname)
         free(user_set->input_joystick_data.fname);
     user_set->input_joystick_data.fname = strdup(downJsFile->getSelectedValue<std::string>().c_str());
     user_set->input_joystick_data.max_axis = downJsMax->getSelectedValue<int>();
-    user_set->input_keyboard_data.g = DEFAULT_KEYBOARD_G;
-    user_set->input_joystick_data.interval = DEFAULT_JOYSTICK_INTERVAL;
+    user_set->input_joystick_data.interval = downJsDelay->getSelectedValue<int>();
+    if (user_set->input_accel_data.fname)
+        free(user_set->input_accel_data.fname);
+    user_set->input_accel_data.fname = strdup(downAccelFile->getSelectedValue<std::string>().c_str());
+    user_set->input_accel_data.max_axis = downAccelMax->getSelectedValue<int>();
+    user_set->input_accel_data.interval = downAccelDelay->getSelectedValue<int>();
 
     user_set->vibro_type = (VibroType)downVibroType->getSelectedValue<int>();
     user_set->vibro_freeerunner_data.duration = DEFAULT_FR_VIBRO_DURATION;
@@ -431,6 +460,31 @@ class SaveActionListener : public gcn::ActionListener
     }
 };
 
+static void RestoreUiDefaults()
+{
+    chbScroll->setSelected(false);
+    chbGeomMax->setSelected(true);
+    downGeomX->setSelectedValue<int>(0);
+    downGeomY->setSelectedValue<int>(0);
+    downBpp->setSelectedValue<int>(0);
+    downFullscreen->setSelectedValue<int>(FULLSCREEN_NONE);
+    downDelay->setSelectedValue<int>(2);
+
+    downInputType->setSelectedValue<int>(INPUT_KEYBOARD);
+    chbInputSwapXy->setSelected(false);
+    chbInputInvertX->setSelected(false);
+    chbInputInvertY->setSelected(false);
+    downKbdG->setSelectedValue<float>(0.7);
+    downJsFile->setSelectedValue<std::string>(JS_DEV "0");
+    downJsMax->setSelectedValue<int>(32768);
+    downJsDelay->setSelectedValue<int>(2);
+    downAccelFile->setSelectedValue<std::string>(ACCEL_TOUCHBOOK);
+    downAccelMax->setSelectedValue<int>(64);
+    downAccelDelay->setSelectedValue<int>(2);
+
+    downVibroType->setSelectedValue<int>(VIBRO_DUMMY);
+}
+
 class PresetActionListener : public gcn::ActionListener
 {
     void action(const gcn::ActionEvent &actionEvent)
@@ -438,28 +492,20 @@ class PresetActionListener : public gcn::ActionListener
         const std::string &sourceId = actionEvent.getSource()->getId();
         if (sourceId == presetDesktopButton->getId())
         {
-            chbScroll->setSelected(false);
-            chbGeomMax->setSelected(true);
-            downGeomX->setSelectedValue<int>(0);
-            downGeomY->setSelectedValue<int>(0);
-            downBpp->setSelectedValue<int>(0);
-            downFullscreen->setSelectedValue<int>(FULLSCREEN_NONE);
-            downDelay->setSelectedValue<int>(1);
-
-            downInputType->setSelectedValue<int>(INPUT_KEYBOARD);
-            chbInputSwapXy->setSelected(false);
-            chbInputInvertX->setSelected(false);
-            chbInputInvertY->setSelected(false);
-            downJsFile->setSelectedValue<std::string>(JS_DEV "0");
-            downJsMax->setSelectedValue<int>(32768);
-
-            downVibroType->setSelectedValue<int>(VIBRO_DUMMY);
+            RestoreUiDefaults();
         }
         else if (sourceId == presetFreerunnerButton->getId())
         {
         }
         else if (sourceId == presetTouchbookButton->getId())
         {
+            RestoreUiDefaults();
+
+            chbScroll->setSelected(true);
+            downFullscreen->setSelectedValue<int>(FULLSCREEN_INGAME);
+
+            downInputType->setSelectedValue<int>(INPUT_ACCEL);
+            chbInputSwapXy->setSelected(true);
         }
         else if (sourceId == presetPandoraButton->getId())
         {
@@ -764,7 +810,7 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     const char *fsVariantNames[] = {FULLSCREEN_NONE_STR, FULLSCREEN_INGAME_STR, FULLSCREEN_ALWAYS_STR};
     gcn::ListModel *fsListModel = CreateGenericListModel(fsVariantNames, ARRAY_AND_SIZE(fsVariants, int));
 
-    const int delayVariants[] = {0, 1, 2, 5, 10};
+    const int delayVariants[] = {0, 1, 2, 5, 10, 20, 50};
     gcn::ListModel *delayListModel = CreateGenericListModel(ARRAY_AND_SIZE(delayVariants, int));
 
     gcn::ListModel *videoListModels[] = {geomListModel, bppListModel, fsListModel, delayListModel};
@@ -786,17 +832,23 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     /*
      * Init input tab
      */
-    const int inputTypeVariants[] = {INPUT_DUMMY, INPUT_KEYBOARD, INPUT_JOYSTICK};
-    const char *inputTypeVariantNames[] = {INPUT_DUMMY_STR, INPUT_KEYBOARD_STR, INPUT_JOYSTICK_STR};
+    const int inputTypeVariants[] = {INPUT_DUMMY, INPUT_KEYBOARD, INPUT_JOYSTICK, INPUT_ACCEL};
+    const char *inputTypeVariantNames[] = {INPUT_DUMMY_STR, INPUT_KEYBOARD_STR, INPUT_JOYSTICK_STR, INPUT_ACCEL_STR};
     gcn::ListModel *inputTypeListModel = CreateGenericListModel(inputTypeVariantNames, ARRAY_AND_SIZE(inputTypeVariants, int));
     
-    const char *jsFileVariants[] = {JS_DEV "0", JS_DEV "1", JS_DEV "2", JS_DEV "3", JS_DEV_TOUCHBOOK};
-    gcn::ListModel *jsFileListModel = CreateGenericListModel(ARRAY_AND_SIZE(jsFileVariants, int));
+    const float kbdGVariants[] = {0.5, 0.7, 1.0};
+    gcn::ListModel *kbdGListModel = CreateGenericListModel(ARRAY_AND_SIZE(kbdGVariants, float));
 
-    const int jsMaxVariants[] = {8192, 16384, 32768};
-    gcn::ListModel *jsMaxListModel = CreateGenericListModel(ARRAY_AND_SIZE(jsMaxVariants, int));
+    const char *jsFileVariants[] = {JS_DEV "0", JS_DEV "1", JS_DEV "2", JS_DEV "3"};
+    gcn::ListModel *jsFileListModel = CreateGenericListModel(ARRAY_AND_SIZE(jsFileVariants, char *));
 
-    gcn::ListModel *inputListModels[] = {inputTypeListModel, jsFileListModel, jsMaxListModel};
+    const char *accelFileVariants[] = {ACCEL_TOUCHBOOK};
+    gcn::ListModel *accelFileListModel = CreateGenericListModel(ARRAY_AND_SIZE(accelFileVariants, char *));
+
+    const int axisMaxVariants[] = {32, 64, 100, 128, 256, 512, 1000, 1024, 8192, 16384, 32768};
+    gcn::ListModel *axisMaxListModel = CreateGenericListModel(ARRAY_AND_SIZE(axisMaxVariants, int));
+
+    gcn::ListModel *inputListModels[] = {inputTypeListModel, kbdGListModel, jsFileListModel, accelFileListModel, axisMaxListModel};
     HoldListModels(inputListModels);
 
     gcn::Label *lblInputType = new gcn::Label("Input device type");
@@ -807,16 +859,30 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     chbInputInvertX = new gcn::CheckBox("Invert X axis");
     chbInputInvertY = new gcn::CheckBox("Invert Y axis");
 
+    gcn::Label *lblKbdG = new gcn::Label("Keyboard sensitivity");
+    downKbdG = CreateDropDown(kbdGListModel, scrollBarW, downScrollAreaH);
+
     gcn::Label *lblJsFile = new gcn::Label("Joystick file");
     downJsFile = CreateDropDown(jsFileListModel, scrollBarW, downScrollAreaH);
     gcn::Label *lblJsMax = new gcn::Label("Max joystick axis offset");
-    downJsMax = CreateDropDown(jsMaxListModel, scrollBarW, downScrollAreaH);
+    downJsMax = CreateDropDown(axisMaxListModel, scrollBarW, downScrollAreaH);
+    gcn::Label *lblJsDelay = new gcn::Label("Joystick reading interval (ms)");
+    downJsDelay = CreateDropDown(delayListModel, scrollBarW, downScrollAreaH);
+
+    gcn::Label *lblAccelFile = new gcn::Label("Accelerometer file");
+    downAccelFile = CreateDropDown(accelFileListModel, scrollBarW, downScrollAreaH);
+    gcn::Label *lblAccelMax = new gcn::Label("Max accelerometer axis offset");
+    downAccelMax = CreateDropDown(axisMaxListModel, scrollBarW, downScrollAreaH);
+    gcn::Label *lblAccelDelay = new gcn::Label("Accel. reading interval (ms)");
+    downAccelDelay = CreateDropDown(delayListModel, scrollBarW, downScrollAreaH);
 
     btnInputCal->addActionListener(&calPerformActionListener);
     btnInputCalReset->addActionListener(&calResetActionListener);
-    
+
     gcn::Widget *inputWidgets[] = {lblInputType, downInputType, btnInputCal, btnInputCalReset,
-        chbInputSwapXy, chbInputInvertX, chbInputInvertY, lblJsFile, downJsFile, lblJsMax, downJsMax};
+        chbInputSwapXy, chbInputInvertX, chbInputInvertY, lblKbdG, downKbdG,
+        lblJsFile, downJsFile, lblJsMax, downJsMax, lblJsDelay, downJsDelay,
+        lblAccelFile, downAccelFile, lblAccelMax, downAccelMax, lblAccelDelay, downAccelDelay};
     int inputTabHeight = FillContainer(inputCont, ARRAY_AND_SIZE(inputWidgets, gcn::Widget *), scrolledTabW);
     inputCont->setSize(winRect.width, max(inputTabHeight + downScrollAreaH, scrollHeight));
     HoldWidgets(inputWidgets);

@@ -6,7 +6,7 @@
     "geom_y": 0,
     "bpp": 0,
     "fullscreen_mode": "none",
-    "frame_delay": 1,
+    "frame_delay": 2,
     "scrolling": false,
     "input_type": "keyboard",
     "vibro_type": "dummy",
@@ -26,7 +26,13 @@
     "input_joystick_data": {
         "fname": "/dev/input/js0",
         "max_axis": 32768.0,
-        "interval": 2000
+        "interval": 2
+    },
+
+    "input_accelerometer_data": {
+        "fname": "/dev/input/accel0",
+        "max_axis": 64.0,
+        "interval": 2
     },
 
     "vibro_freeerunner_data": {

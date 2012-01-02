@@ -188,6 +188,8 @@ InputType StrToInputType(char *str, bool free_str)
             res = INPUT_KEYBOARD;
         else if (!strcmp(str, INPUT_JOYSTICK_STR))
             res = INPUT_JOYSTICK;
+        else if (!strcmp(str, INPUT_ACCEL_STR))
+            res = INPUT_ACCEL;
         if (free_str)
             free(str);
     }
@@ -385,6 +387,13 @@ bool load_config(const char *fname)
     user_set.input_joystick_data.max_axis = (float)_json_object_get_member_double(input_joystick_data_object, "max_axis");
     user_set.input_joystick_data.interval = _json_object_get_member_int(input_joystick_data_object, "interval");
 
+    JsonObject *input_accel_data_object = _json_object_get_member_object(root_object, "input_accelerometer_data");
+    user_set.input_accel_data.fname = _json_object_dup_member_string(input_accel_data_object, "fname");
+    if (!user_set.input_accel_data.fname)
+        user_set.input_accel_data.fname = strdup("");
+    user_set.input_accel_data.max_axis = (float)_json_object_get_member_double(input_accel_data_object, "max_axis");
+    user_set.input_accel_data.interval = _json_object_get_member_int(input_accel_data_object, "interval");
+
     return true;
 }
 
@@ -453,6 +462,9 @@ void SetJsonValues()
     case INPUT_JOYSTICK:
         input_type_str = INPUT_JOYSTICK_STR;
         break;
+    case INPUT_ACCEL:
+        input_type_str = INPUT_ACCEL_STR;
+        break;
     default:
         input_type_str = INPUT_DUMMY_STR;
         break;
@@ -488,6 +500,11 @@ void SetJsonValues()
     _json_object_set_member_string(input_joystick_data_object, "fname", user_set.input_joystick_data.fname);
     _json_object_set_member_double(input_joystick_data_object, "max_axis", user_set.input_joystick_data.max_axis);
     _json_object_set_member_int(input_joystick_data_object, "interval", user_set.input_joystick_data.interval);
+
+    JsonObject *input_accel_data_object = _json_object_get_member_object(root_object, "input_accelerometer_data");
+    _json_object_set_member_string(input_accel_data_object, "fname", user_set.input_accel_data.fname);
+    _json_object_set_member_double(input_accel_data_object, "max_axis", user_set.input_accel_data.max_axis);
+    _json_object_set_member_int(input_accel_data_object, "interval", user_set.input_accel_data.interval);
 }
 
 void SaveUserSettings()
