@@ -537,6 +537,8 @@ void SaveUserSettings()
             JsonGenerator *generator = json_generator_new();
             json_generator_set_root(generator, root_node);
             GError *error = NULL;
+            // Doubles serialization might not work on some Ubuntu releases
+            // https://bugs.launchpad.net/ubuntu/+source/json-glib/+bug/756426
             json_generator_to_file(generator, save_file_full, &error);
             if (error)
             {
