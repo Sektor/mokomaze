@@ -42,6 +42,7 @@ mokomaze_SOURCES = \
   input/input_keyboard.c \
   input/input_joystick.c \
   input/input_accel.c \
+  misc/IMG_SavePNG.c \
   gui/gui_settings.cpp \
   gui/gui_font.cpp \
   gui/gui_msgbox.cpp \
@@ -61,6 +62,7 @@ mokomaze_SOURCES = \
   input/input_keyboard.h \
   input/input_joystick.h \
   input/input_accel.h \
+  misc/IMG_SavePNG.h \
   vibro/vibro.h \
   vibro/vibrotypes.h \
   vibro/vibro_freerunner.h \
