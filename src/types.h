@@ -46,8 +46,8 @@ typedef struct {
     FullscreenMode fullscreen_mode;
     int frame_delay;
     InputType input_type;
+    float ball_speed;
     InputCalibrationData input_calibration_data;
-    InputKeyboardData input_keyboard_data;
     InputJoystickData input_joystick_data;
     InputAccelData input_accel_data;
     VibroType vibro_type;

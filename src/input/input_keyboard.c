@@ -21,8 +21,6 @@
 #include <SDL/SDL.h>
 #include "input_keyboard.h"
 
-static InputKeyboardData params = {0};
-
 static void input_init()
 {
 }
@@ -33,27 +31,27 @@ static void input_shutdown()
 
 static void input_read(float *x, float *y, float *z)
 {
-    double kx = 0, ky = 0;
+    float a = 1;
+    float kx = 0, ky = 0;
     Uint8 *keystate = SDL_GetKeyState(NULL);
 
     if ( keystate[SDLK_UP] )
-        ky = -params.g;
+        ky = -a;
     else if ( keystate[SDLK_DOWN] )
-        ky = params.g;
+        ky = a;
 
     if ( keystate[SDLK_LEFT] )
-        kx = -params.g;
+        kx = -a;
     else if ( keystate[SDLK_RIGHT] )
-        kx = params.g;
+        kx = a;
 
     if (x) *x = kx;
     if (y) *y = ky;
     if (z) *z = 0;
 }
 
-void input_get_keyboard(InputInterface *input, InputKeyboardData *data)
+void input_get_keyboard(InputInterface *input)
 {
-    params = *data;
     input->init = &input_init;
     input->shutdown = &input_shutdown;
     input->read = &input_read;

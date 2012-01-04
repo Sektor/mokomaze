@@ -357,6 +357,7 @@ bool load_config(const char *fname)
     user_set.bpp = _json_object_get_member_int(root_object, "bpp");
     user_set.scrolling = _json_object_get_member_boolean(root_object, "scrolling");
     user_set.frame_delay = _json_object_get_member_int(root_object, "frame_delay");
+    user_set.ball_speed = (float)_json_object_get_member_double(root_object, "ball_speed");
 
     char *fullscreen_str = _json_object_dup_member_string(root_object, "fullscreen_mode");
     user_set.fullscreen_mode = StrToFullscreenMode(fullscreen_str, true);
@@ -373,9 +374,7 @@ bool load_config(const char *fname)
     user_set.input_calibration_data.invert_y = _json_object_get_member_boolean(input_calibration_data_object, "invert_y");
     user_set.input_calibration_data.cal_x = (float)_json_object_get_member_double(input_calibration_data_object, "cal_x");
     user_set.input_calibration_data.cal_y = (float)_json_object_get_member_double(input_calibration_data_object, "cal_y");
-
-    JsonObject *input_keyboard_data_object = _json_object_get_member_object(root_object, "input_keyboard_data");
-    user_set.input_keyboard_data.g = (float)_json_object_get_member_double(input_keyboard_data_object, "g");
+    user_set.input_calibration_data.sens = (float)_json_object_get_member_double(input_calibration_data_object, "sensitivity");
 
     JsonObject *vibro_freeerunner_data_object = _json_object_get_member_object(root_object, "vibro_freeerunner_data");
     user_set.vibro_freeerunner_data.duration = _json_object_get_member_int(vibro_freeerunner_data_object, "duration");
@@ -437,6 +436,7 @@ void SetJsonValues()
     _json_object_set_member_int(root_object, "bpp", user_set.bpp);
     _json_object_set_member_boolean(root_object, "scrolling", user_set.scrolling);
     _json_object_set_member_int(root_object, "frame_delay", user_set.frame_delay);
+    _json_object_set_member_double(root_object, "ball_speed", user_set.ball_speed);
 
     char *fullscreen_mode_str = NULL;
     switch (user_set.fullscreen_mode)
@@ -489,9 +489,7 @@ void SetJsonValues()
     _json_object_set_member_boolean(input_calibration_data_object, "invert_y", user_set.input_calibration_data.invert_y);
     _json_object_set_member_double(input_calibration_data_object, "cal_x", user_set.input_calibration_data.cal_x);
     _json_object_set_member_double(input_calibration_data_object, "cal_y", user_set.input_calibration_data.cal_y);
-
-    JsonObject *input_keyboard_data_object = _json_object_get_member_object(root_object, "input_keyboard_data");
-    _json_object_set_member_double(input_keyboard_data_object, "g", user_set.input_keyboard_data.g);
+    _json_object_set_member_double(input_calibration_data_object, "sensitivity", user_set.input_calibration_data.sens);
 
     JsonObject *vibro_freeerunner_data_object = _json_object_get_member_object(root_object, "vibro_freeerunner_data");
     _json_object_set_member_int(vibro_freeerunner_data_object, "duration", user_set.vibro_freeerunner_data.duration);

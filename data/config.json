@@ -10,17 +10,15 @@
     "scrolling": false,
     "input_type": "keyboard",
     "vibro_type": "dummy",
+    "ball_speed": 1.0,
 
     "input_calibration_data": {
         "swap_xy": false,
         "invert_x": false,
         "invert_y": false,
         "cal_x": 0.0,
-        "cal_y": 0.0
-    },
-
-    "input_keyboard_data": {
-        "g": 0.7
+        "cal_y": 0.0,
+        "sensitivity": 0.7
     },
 
     "input_joystick_data": {

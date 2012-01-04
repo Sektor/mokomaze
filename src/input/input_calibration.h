@@ -30,6 +30,7 @@ typedef struct {
     bool invert_y;
     float cal_x;
     float cal_y;
+    float sens;
 } InputCalibrationData;
 
 void input_calibration_reset();

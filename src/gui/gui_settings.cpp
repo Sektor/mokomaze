@@ -319,7 +319,8 @@ SuperDropDown *downInputType = NULL;
 gcn::CheckBox *chbInputSwapXy = NULL;
 gcn::CheckBox *chbInputInvertX = NULL;
 gcn::CheckBox *chbInputInvertY = NULL;
-SuperDropDown *downKbdG = NULL;
+SuperDropDown *downInputSens = NULL;
+SuperDropDown *downBallSpeed = NULL;
 SuperDropDown *downJsFile = NULL;
 SuperDropDown *downJsMax = NULL;
 SuperDropDown *downJsDelay = NULL;
@@ -362,7 +363,8 @@ static void LoadUiState()
     chbInputSwapXy->setSelected(user_set->input_calibration_data.swap_xy);
     chbInputInvertX->setSelected(user_set->input_calibration_data.invert_x);
     chbInputInvertY->setSelected(user_set->input_calibration_data.invert_y);
-    downKbdG->setSelectedValue<float>(user_set->input_keyboard_data.g);
+    downInputSens->setSelectedValue<float>(user_set->input_calibration_data.sens);
+    downBallSpeed->setSelectedValue<float>(user_set->ball_speed);
     downJsFile->setSelectedValue<std::string>(user_set->input_joystick_data.fname);
     downJsMax->setSelectedValue<int>(user_set->input_joystick_data.max_axis);
     downJsDelay->setSelectedValue<int>(user_set->input_joystick_data.interval);
@@ -396,7 +398,8 @@ static void SaveUiState()
         (user_set->input_calibration_data.swap_xy != chbInputSwapXy->isSelected()) ||
         (user_set->input_calibration_data.invert_x != chbInputInvertX->isSelected()) ||
         (user_set->input_calibration_data.invert_y != chbInputInvertY->isSelected()) ||
-        (user_set->input_keyboard_data.g != downKbdG->getSelectedValue<float>()) ||
+        (user_set->input_calibration_data.sens != downInputSens->getSelectedValue<float>()) ||
+        //(user_set->ball_speed != downBallSpeed->getSelectedValue<float>()) ||
         (user_set->input_joystick_data.fname != downJsFile->getSelectedValue<std::string>()) ||
         (user_set->input_joystick_data.max_axis != downJsMax->getSelectedValue<int>()) ||
         (user_set->input_joystick_data.interval != downJsDelay->getSelectedValue<int>()) ||
@@ -427,7 +430,8 @@ static void SaveUiState()
     user_set->input_calibration_data.swap_xy = chbInputSwapXy->isSelected();
     user_set->input_calibration_data.invert_x = chbInputInvertX->isSelected();
     user_set->input_calibration_data.invert_y = chbInputInvertY->isSelected();
-    user_set->input_keyboard_data.g = downKbdG->getSelectedValue<float>();
+    user_set->input_calibration_data.sens = downInputSens->getSelectedValue<float>();
+    user_set->ball_speed = downBallSpeed->getSelectedValue<float>();
     if (user_set->input_joystick_data.fname)
         free(user_set->input_joystick_data.fname);
     user_set->input_joystick_data.fname = strdup(downJsFile->getSelectedValue<std::string>().c_str());
@@ -474,7 +478,8 @@ static void RestoreUiDefaults()
     chbInputSwapXy->setSelected(false);
     chbInputInvertX->setSelected(false);
     chbInputInvertY->setSelected(false);
-    downKbdG->setSelectedValue<float>(0.7);
+    downInputSens->setSelectedValue<float>(0.7);
+    downBallSpeed->setSelectedValue<float>(1.0);
     downJsFile->setSelectedValue<std::string>(JS_DEV "0");
     downJsMax->setSelectedValue<int>(32768);
     downJsDelay->setSelectedValue<int>(2);
@@ -506,6 +511,8 @@ class PresetActionListener : public gcn::ActionListener
 
             downInputType->setSelectedValue<int>(INPUT_ACCEL);
             chbInputSwapXy->setSelected(true);
+            downInputSens->setSelectedValue<float>(1.0);
+            downBallSpeed->setSelectedValue<float>(1.8);
         }
         else if (sourceId == presetPandoraButton->getId())
         {
@@ -835,9 +842,13 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     const int inputTypeVariants[] = {INPUT_DUMMY, INPUT_KEYBOARD, INPUT_JOYSTICK, INPUT_ACCEL};
     const char *inputTypeVariantNames[] = {INPUT_DUMMY_STR, INPUT_KEYBOARD_STR, INPUT_JOYSTICK_STR, INPUT_ACCEL_STR};
     gcn::ListModel *inputTypeListModel = CreateGenericListModel(inputTypeVariantNames, ARRAY_AND_SIZE(inputTypeVariants, int));
-    
-    const float kbdGVariants[] = {0.5, 0.7, 1.0};
-    gcn::ListModel *kbdGListModel = CreateGenericListModel(ARRAY_AND_SIZE(kbdGVariants, float));
+
+    const float inputSensVariants[] = {
+        0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+        1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0,
+        2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0
+    };
+    gcn::ListModel *inputSensListModel = CreateGenericListModel(ARRAY_AND_SIZE(inputSensVariants, float));
 
     const char *jsFileVariants[] = {JS_DEV "0", JS_DEV "1", JS_DEV "2", JS_DEV "3"};
     gcn::ListModel *jsFileListModel = CreateGenericListModel(ARRAY_AND_SIZE(jsFileVariants, char *));
@@ -848,7 +859,7 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     const int axisMaxVariants[] = {32, 64, 100, 128, 256, 512, 1000, 1024, 8192, 16384, 32768};
     gcn::ListModel *axisMaxListModel = CreateGenericListModel(ARRAY_AND_SIZE(axisMaxVariants, int));
 
-    gcn::ListModel *inputListModels[] = {inputTypeListModel, kbdGListModel, jsFileListModel, accelFileListModel, axisMaxListModel};
+    gcn::ListModel *inputListModels[] = {inputTypeListModel, inputSensListModel, jsFileListModel, accelFileListModel, axisMaxListModel};
     HoldListModels(inputListModels);
 
     gcn::Label *lblInputType = new gcn::Label("Input device type");
@@ -859,8 +870,10 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     chbInputInvertX = new gcn::CheckBox("Invert X axis");
     chbInputInvertY = new gcn::CheckBox("Invert Y axis");
 
-    gcn::Label *lblKbdG = new gcn::Label("Keyboard sensitivity");
-    downKbdG = CreateDropDown(kbdGListModel, scrollBarW, downScrollAreaH);
+    gcn::Label *lblInputSens = new gcn::Label("Sensitivity");
+    downInputSens = CreateDropDown(inputSensListModel, scrollBarW, downScrollAreaH);
+    gcn::Label *lblBallSpeed = new gcn::Label("Ball speed");
+    downBallSpeed = CreateDropDown(inputSensListModel, scrollBarW, downScrollAreaH);
 
     gcn::Label *lblJsFile = new gcn::Label("Joystick file");
     downJsFile = CreateDropDown(jsFileListModel, scrollBarW, downScrollAreaH);
@@ -880,8 +893,8 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     btnInputCalReset->addActionListener(&calResetActionListener);
 
     gcn::Widget *inputWidgets[] = {lblInputType, downInputType, btnInputCal, btnInputCalReset,
-        chbInputSwapXy, chbInputInvertX, chbInputInvertY, lblKbdG, downKbdG,
-        lblJsFile, downJsFile, lblJsMax, downJsMax, lblJsDelay, downJsDelay,
+        chbInputSwapXy, chbInputInvertX, chbInputInvertY, lblInputSens, downInputSens,
+        lblBallSpeed, downBallSpeed, lblJsFile, downJsFile, lblJsMax, downJsMax, lblJsDelay, downJsDelay,
         lblAccelFile, downAccelFile, lblAccelMax, downAccelMax, lblAccelDelay, downAccelDelay};
     int inputTabHeight = FillContainer(inputCont, ARRAY_AND_SIZE(inputWidgets, gcn::Widget *), scrolledTabW);
     inputCont->setSize(winRect.width, max(inputTabHeight + downScrollAreaH, scrollHeight));
@@ -910,7 +923,7 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
      */
     gcn::Label *lblAbout1 = new gcn::Label("Mokomaze");
     gcn::Label *lblAbout2 = new gcn::Label("Ball-in-a-labyrinth game");
-    gcn::Label *lblAbout3 = new gcn::Label("Copyright (C) 2009-2011 Anton Olkhovik");
+    gcn::Label *lblAbout3 = new gcn::Label("Copyright (C) 2009-2012 Anton Olkhovik");
     gcn::Label *lblAbout4 = new gcn::Label("http://mokomaze.sourceforge.net/");
 
     lblAbout1->setAlignment(gcn::Graphics::CENTER);

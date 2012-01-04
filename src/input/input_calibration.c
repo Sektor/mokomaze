@@ -19,6 +19,7 @@
  */
 
 #include <math.h>
+#include "../mazecore/mazehelpers.h"
 #include "input_calibration.h"
 
 static float sum_x = 0.0f;
@@ -48,6 +49,12 @@ void input_calibration_adjust(InputCalibrationData *data, float *x, float *y, fl
 {
     float tx = (x ? *x : 0);
     float ty = (y ? *y : 0);
+
+    if (data->cal_x != 0.0f)
+        tx = sin(asin(tx)-data->cal_x);
+    if (data->cal_y != 0.0f)
+        ty = sin(asin(ty)-data->cal_y);
+
     if (data->swap_xy)
     {
         float tmpx = tx;
@@ -58,11 +65,12 @@ void input_calibration_adjust(InputCalibrationData *data, float *x, float *y, fl
         tx = -tx;
     if (data->invert_y)
         ty = -ty;
-    
-    if (data->cal_x != 0.0f)
-        tx = sin(asin(tx)-data->cal_x);
-    if (data->cal_y != 0.0f)
-        ty = sin(asin(ty)-data->cal_y);
+
+    tx *= data->sens;
+    ty *= data->sens;
+
+    clamp(tx, -1, 1);
+    clamp(ty, -1, 1);
     
     if (x) *x = tx;
     if (y) *y = ty;

@@ -28,6 +28,7 @@
 
 #define GRAV_CONST 9.81*1.0
 #define PHYS_SCALE (100.0*game_config.ball_r/23)
+#define DEFAULT_FORCE_COEF 0.45
 
 static MazeConfig game_config;
 static Level *game_levels = NULL;
@@ -36,6 +37,7 @@ static int cur_level = 0;
 
 static GameState new_game_state;
 static float acx = 0, acy = 0, acz = 0;
+static float force_coef = DEFAULT_FORCE_COEF;
 static int ball_pos_x = 0, ball_pos_y = 0, ball_pos_z = 0;
 static const dReal *ball_rot = NULL;
 
@@ -377,8 +379,8 @@ GameState maze_step(int delta_ticks)
 {
     float do_phys_step = get_phys_step(delta_ticks);
 
-    float forcex = acx*0.45;
-    float forcey = acy*0.45;
+    float forcex = acx*force_coef;
+    float forcey = acy*force_coef;
 
     const dReal *poss = NULL;
     bool wnanc = false;
@@ -535,11 +537,16 @@ void maze_set_vibro_callback(void (*f)(float))
     vibro_callback = f;
 }
 
-void maze_set_forces(float x, float y, float z)
+void maze_set_tilt(float x, float y, float z)
 {
     acx = x;
     acy = y;
     acz = z;
+}
+
+void maze_set_speed(float s)
+{
+    force_coef = DEFAULT_FORCE_COEF * s;
 }
 
 void maze_get_ball(int *x, int *y, int *z, const dReal **rot)

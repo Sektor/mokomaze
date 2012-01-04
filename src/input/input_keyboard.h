@@ -23,10 +23,6 @@
 
 #include "inputtypes.h"
 
-typedef struct {
-    float g;
-} InputKeyboardData;
-
-void input_get_keyboard(InputInterface *input, InputKeyboardData *data);
+void input_get_keyboard(InputInterface *input);
 
 #endif /* INPUT_KEYBOARD_H */

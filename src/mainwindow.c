@@ -343,7 +343,7 @@ void SetInput()
 
     InputType itype = user_set->input_type;
     if (itype == INPUT_KEYBOARD)
-        input_get_keyboard(&input, &user_set->input_keyboard_data);
+        input_get_keyboard(&input);
     else if (itype == INPUT_JOYSTICK)
         input_get_joystick(&input, &user_set->input_joystick_data);
     else if (itype == INPUT_ACCEL)
@@ -741,7 +741,8 @@ void render_window()
         if (input_cal_cycle)
             input_cal_cycle = (input_calibration_sample(&user_set->input_calibration_data, &acx, &acy, NULL) < MAX_CALIBRATION_SAMPLES);
         input_calibration_adjust(&user_set->input_calibration_data, &acx, &acy, NULL);
-        maze_set_forces(acx, acy, 0);
+        maze_set_speed(user_set->ball_speed);
+        maze_set_tilt(acx, acy, 0);
         GameState game_state = maze_step(delta_ticks);
 
         const dReal *R;
