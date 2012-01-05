@@ -29,6 +29,7 @@
 #include <json-glib/json-glib.h>
 #include <argtable2.h>
 #include "types.h"
+#include "paramsloader.h"
 
 #define LOG_MODULE "Loader"
 #include "logging.h"
@@ -41,9 +42,11 @@ static Prompt arguments = {0};
 
 #define LEVELPACK_DEFAULT "main"
 #define SAVE_DIR ".mokomaze"
+#define CACHE_DIR "gfx_cache"
 #define SAVE_FILE "user.json"
 #define CONFIG_FILE MDIR "config.json"
 static char *save_dir_full = NULL;
+static char *cache_dir_full = NULL;
 static char *save_file_full = NULL;
 static bool can_save = false;
 
@@ -410,6 +413,8 @@ bool load_params()
         can_save = true;
         save_dir_full = (char*)malloc(strlen(pHome) + strlen("/") + strlen(SAVE_DIR) + 1);
         sprintf(save_dir_full, "%s/%s", pHome, SAVE_DIR);
+        cache_dir_full = (char*)malloc(strlen(save_dir_full) + strlen("/") + strlen(CACHE_DIR) + 1);
+        sprintf(cache_dir_full, "%s/%s", save_dir_full, CACHE_DIR);
         save_file_full = (char*)malloc(strlen(save_dir_full) + strlen("/") + strlen(SAVE_FILE) + 1);
         sprintf(save_file_full, "%s/%s", save_dir_full, SAVE_FILE);
     }
@@ -512,18 +517,8 @@ void SaveUserSettings()
     if (!err)
     {
         log_info("Saving user settings file `%s'", save_file_full);
-        struct stat st;
-        if (stat(save_dir_full, &st) != 0)
-        {
-            log_info("Directory `%s' not exists. Trying to create.", save_dir_full);
-            if (mkdir(save_dir_full, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0)
-            {
-                log_error("can't create");
-                err = true;
-            }
-            else
-                log_info("created successfully");
-        }
+        if (!TouchDir(save_dir_full))
+            err = true;
     }
 
     if (!err)
@@ -550,6 +545,7 @@ void SaveUserSettings()
 
     free(user_set.levelpack); //
     free(user_set.input_joystick_data.fname); //
+    free(cache_dir_full);
     free(save_dir_full);
     free(save_file_full);
 }
@@ -666,6 +662,26 @@ void parse_command_line(int argc, char *argv[])
     arg_freetable(argtable,sizeof(argtable)/sizeof(argtable[0]));
 }
 
+bool TouchDir(char *dir)
+{
+    bool ok = true;
+    struct stat st;
+    if (stat(dir, &st) != 0)
+    {
+        log_info("Directory `%s' does not exists. Trying to create.", dir);
+        if (mkdir(dir, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) == 0)
+        {
+            log_info("Directory `%s' created successfully.", dir);
+        }
+        else
+        {
+            log_error("Can't create directory `%s'.", dir);
+            ok = false;
+        }
+    }
+    return ok;
+}
+
 //------------------------------------------------------------------------------
 
 MazeConfig GetGameConfig()
@@ -691,4 +707,14 @@ User* GetUserSettings()
 Prompt GetArguments()
 {
     return arguments;
+}
+
+char* GetSaveDir()
+{
+    return save_dir_full;
+}
+
+char* GetCacheDir()
+{
+    return cache_dir_full;
 }

@@ -27,11 +27,14 @@
 
 void parse_command_line(int argc, char *argv[]);
 bool load_params();
+bool TouchDir(char *dir);
 MazeConfig GetGameConfig();
 Level* GetGameLevels();
 int GetGameLevelsCount();
 User* GetUserSettings();
 Prompt GetArguments();
 void SaveUserSettings();
+char* GetSaveDir();
+char* GetCacheDir();
 
 #endif

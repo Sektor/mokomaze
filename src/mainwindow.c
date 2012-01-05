@@ -20,6 +20,9 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <librsvg/rsvg.h>
 #include <librsvg/rsvg-cairo.h>
 #include <SDL/SDL.h>
@@ -32,6 +35,7 @@
 #include "input/input.h"
 #include "vibro/vibro.h"
 #include "gui/gui_settings.h"
+#include "misc/IMG_SavePNG.h"
 #include "fonts.h"
 #include "types.h"
 
@@ -48,6 +52,8 @@ Level *game_levels = NULL;
 MazeConfig game_config = {0};
 static Prompt arguments = {0};
 static User *user_set = NULL;
+static char *save_dir_full = NULL;
+static char *cache_dir_full = NULL;
 
 int cur_level = 0;
 int prev_px = 0, prev_py = 0;
@@ -61,6 +67,7 @@ SDL_Surface *fin_pic = NULL, *desk_pic = NULL, *wall_pic = NULL, *render_pic = N
 SDL_Rect desk_rect;
 
 static int LoadImgErrors = 0;
+static bool can_cache = false;
 static bool ingame = false;
 
 //==============================================================================
@@ -85,79 +92,163 @@ void BumpVibrate(float speed)
     }
 }
 
-SDL_Surface *LoadImg(char *file)
+void ClearCache(char *file, char *file_hash)
+{
+    DIR *dir;
+    struct dirent *entry;
+
+    log_info("clearing old cache entries of `%s' from directory `%s'", file, cache_dir_full);
+
+    dir = opendir(cache_dir_full);
+    if (dir == NULL)
+        return;
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (!strncmp(entry->d_name, file, strlen(file)) && strncmp(entry->d_name, file_hash, strlen(file_hash)))
+        {
+            char *cached_file_full = (char*)malloc(strlen(cache_dir_full) + strlen("/") + strlen(entry->d_name) + 1);
+            sprintf(cached_file_full, "%s/%s", cache_dir_full, entry->d_name);
+            unlink(cached_file_full);
+            free(cached_file_full);
+        }
+    }
+
+    closedir(dir);
+}
+
+SDL_Surface *LoadImg(char *file, bool show_errors)
 {
     SDL_Surface *res = IMG_Load(file);
-    if (res==NULL)
+    if (!res && show_errors)
     {
-        log_error("can't load image '%s'", file);
-        LoadImgErrors++;
+        log_error("can't load raster image `%s'", file);
     }
     return res;
 }
 
-SDL_Surface *LoadSvg(char *fname, int hor_width, int hor_height, bool rot)
+SDL_Surface *LoadSvg(char *fname, int hor_width, int hor_height, bool rot, bool cache)
 {
+    SDL_Surface *res = NULL;
+    bool skip = false;
+
     rsvg_init();
+    
     GError *error = NULL;
     RsvgHandle *rsvg_handle = rsvg_handle_new_from_file(fname, &error);
     if (!rsvg_handle)
     {
-        log_error("can't load image '%s'", fname);
+        log_error("can't load vector image `%s'", fname);
         LoadImgErrors++;
-        return NULL;
+        skip = true;
     }
-    RsvgDimensionData dimensions;
-    rsvg_handle_get_dimensions(rsvg_handle, &dimensions);
-    int svg_width = dimensions.width;
-    int svg_height = dimensions.height;
 
-    float svg_koef = (float)svg_width / svg_height;
-    float hor_koef = (float)hor_width / hor_height;
-    float scale = (svg_koef > hor_koef ? (float)hor_height / svg_height : (float)hor_width / svg_width);
-
-    int scaled_width = (int)(svg_width * scale);
-    int scaled_height = (int)(svg_height * scale);
-
-    int res_width = ( rot ? hor_height : hor_width );
-    int res_height = ( rot ? hor_width : hor_height );
-
-    int stride = res_width * 4; /* 4 bytes/pixel (32bpp RGBA) */
-    void *image = calloc(stride * res_height, 1);
-    cairo_surface_t *cairo_surf = cairo_image_surface_create_for_data(
-            image, CAIRO_FORMAT_ARGB32,
-            res_width, res_height, stride);
-    cairo_t *cr = cairo_create(cairo_surf);
-
-    if (rot)
+    if (!skip)
     {
-        cairo_translate(cr, -(scaled_height-res_width)/2, res_height+(scaled_width-res_height)/2);
-        cairo_scale(cr, scale, scale);
-        cairo_rotate(cr, -M_PI/2);
-    }
-    else
-    {
-        cairo_translate(cr, -(scaled_width-res_width)/2, -(scaled_height-res_height)/2);
-        cairo_scale(cr, scale, scale);
-    }
+        RsvgDimensionData dimensions;
+        rsvg_handle_get_dimensions(rsvg_handle, &dimensions);
+        int svg_width = dimensions.width;
+        int svg_height = dimensions.height;
 
-    rsvg_handle_render_cairo(rsvg_handle, cr);
+        float svg_koef = (float)svg_width / svg_height;
+        float hor_koef = (float)hor_width / hor_height;
+        float scale = (svg_koef > hor_koef ? (float)hor_height / svg_height : (float)hor_width / svg_width);
 
-    cairo_surface_finish(cairo_surf);
-    cairo_destroy(cr);
+        int scaled_width = (int)(svg_width * scale);
+        int scaled_height = (int)(svg_height * scale);
+
+        int res_width = (rot ? hor_height : hor_width);
+        int res_height = (rot ? hor_width : hor_height);
+
+        bool loaded_from_cache = false;
+        char *cached_file_full = NULL;
+        char *file = NULL;
+        char *file_hash = NULL;
+        if (cache && can_cache)
+        {
+            int mod_time = 0;
+            struct stat st;
+            if (stat(fname, &st) == 0)
+                mod_time = st.st_mtime;
+
+            char *last_slash_ptr = strrchr(fname, '/');
+            file = (last_slash_ptr ? last_slash_ptr + 1 : fname);
+            int max_overhead = 64;
+            cached_file_full = (char*)malloc(strlen(cache_dir_full) + strlen("/") + strlen(file) + max_overhead + 1);
+            file_hash = (char*)malloc(strlen(file) + max_overhead + 1);
+
+            char *state = (rot ? "rotated" : "normal");
+            sprintf(cached_file_full, "%s/%s_%x-%dx%d-%s.png", cache_dir_full, file, mod_time, res_width, res_height, state);
+            sprintf(file_hash, "%s_%x", file, mod_time);
+
+            res = LoadImg(cached_file_full, false);
+            if (res)
+            {
+                log_info("vector image `%s' was loaded from cache `%s'", fname, cached_file_full);
+                loaded_from_cache = true;
+            }
+        }
+
+        if (!loaded_from_cache)
+        {
+            int stride = res_width * 4; /* 4 bytes/pixel (32bpp RGBA) */
+            void *image = calloc(stride * res_height, 1);
+            cairo_surface_t *cairo_surf = cairo_image_surface_create_for_data(
+                    image, CAIRO_FORMAT_ARGB32,
+                    res_width, res_height, stride);
+            cairo_t *cr = cairo_create(cairo_surf);
+
+            if (rot)
+            {
+                cairo_translate(cr, -(scaled_height-res_width)/2, res_height+(scaled_width-res_height)/2);
+                cairo_scale(cr, scale, scale);
+                cairo_rotate(cr, -M_PI/2);
+            }
+            else
+            {
+                cairo_translate(cr, -(scaled_width-res_width)/2, -(scaled_height-res_height)/2);
+                cairo_scale(cr, scale, scale);
+            }
+
+            rsvg_handle_render_cairo(rsvg_handle, cr);
+
+            cairo_surface_finish(cairo_surf);
+            cairo_destroy(cr);
+
+            uint32_t rmask = 0x00ff0000;
+            uint32_t gmask = 0x0000ff00;
+            uint32_t bmask = 0x000000ff;
+            uint32_t amask = 0xff000000;
+            //Notice that it matches CAIRO_FORMAT_ARGB32
+            res = SDL_CreateRGBSurfaceFrom(
+                    (void*) image,
+                    res_width, res_height,
+                    32, //4 bytes/pixel = 32bpp
+                    stride,
+                    rmask, gmask, bmask, amask);
+        }
+
+        if (cache && can_cache)
+        {
+            if (!loaded_from_cache && res)
+            {
+                if (TouchDir(save_dir_full) && TouchDir(cache_dir_full))
+                {
+                    ClearCache(file, file_hash);
+                    if (IMG_SavePNG(res, cached_file_full) == 0)
+                        log_info("vector image `%s' was cached to `%s'", fname, cached_file_full);
+                    else
+                        log_error("can't cache vector image `%s' to `%s'", fname, cached_file_full);
+                }
+                else
+                    can_cache = false;
+            }
+            free(cached_file_full);
+            free(file_hash);
+        }
+    }
+    
     rsvg_term();
-
-    uint32_t rmask = 0x00ff0000;
-    uint32_t gmask = 0x0000ff00;
-    uint32_t bmask = 0x000000ff;
-    uint32_t amask = 0xff000000;
-    //Notice that it matches CAIRO_FORMAT_ARGB32
-    SDL_Surface *res = SDL_CreateRGBSurfaceFrom(
-            (void*) image,
-            res_width, res_height,
-            32, //4 bytes/pixel = 32bpp
-            stride,
-            rmask, gmask, bmask, amask);
 
     return res;
 }
@@ -390,6 +481,10 @@ void render_window()
     user_set = GetUserSettings();
     int start_level = get_start_level();
 
+    save_dir_full = GetSaveDir();
+    cache_dir_full = GetCacheDir();
+    can_cache = (save_dir_full && cache_dir_full);
+
 //------------------------------------------------------------------------------
     ApplyArguments();
 
@@ -437,7 +532,7 @@ void render_window()
     SDL_Rect levelTextLocation;
     levelTextLocation.y = font_padding;
 
-    SDL_Color fontColor;
+    SDL_Color fontColor = {0};
 #ifndef RGBSWAP
     fontColor.r = 231;
     fontColor.g = 190;
@@ -449,24 +544,52 @@ void render_window()
     fontColor.b = 231;
 #endif
 
+    /* Window initialization */
+    ingame = true;
+    Uint32 sdl_flags = SDL_SWSURFACE;
+    if (user_set->fullscreen_mode != FULLSCREEN_NONE)
+        sdl_flags |= SDL_FULLSCREEN;
+    SDL_Surface *disp = SDL_SetVideoMode(disp_x, disp_y, disp_bpp, sdl_flags);
+    if (disp == NULL)
+    {
+        log_error("Can't set video mode %dx%dx%dbpp. Exiting.", disp_x, disp_y, disp_bpp);
+        return;
+    }
+    screen = disp;
+    SDL_Surface *gui_surface = disp;
+    SDL_WM_SetCaption("Mokomaze", "Mokomaze");
+
+    /* Draw loading screen */
+    SDL_Color whiteColor = {0};
+    whiteColor.r = whiteColor.g = whiteColor.b = 255;
+    SDL_Surface *titleSurface = TTF_RenderText_Blended(font, "Loading...", whiteColor);
+    SDL_Rect title_rect;
+    title_rect.x = (disp_x - titleSurface->w) / 2;
+    title_rect.y = (disp_y - titleSurface->h) / 2;
+    title_rect.w = titleSurface->w;
+    title_rect.h = titleSurface->h;
+    SDL_BlitSurface(titleSurface, NULL, screen, &title_rect);
+    SDL_UpdateRect(screen, title_rect);
+    SDL_FreeSurface(titleSurface);
+
 //-- load pictures -------------------------------------------------------------
-    SDL_Surface *back_pic     = LoadSvg(MDIR "prev-main.svg", btn_side, btn_side, false);
-    SDL_Surface *forward_pic  = LoadSvg(MDIR "next-main.svg", btn_side, btn_side, false);
-    SDL_Surface *settings_pic = LoadSvg(MDIR "settings-main.svg", btn_side, btn_side, false);
-    SDL_Surface *exit_pic     = LoadSvg(MDIR "close-main.svg", btn_side, btn_side, false);
+    SDL_Surface *back_pic     = LoadSvg(MDIR "prev-main.svg", btn_side, btn_side, false, false);
+    SDL_Surface *forward_pic  = LoadSvg(MDIR "next-main.svg", btn_side, btn_side, false, false);
+    SDL_Surface *settings_pic = LoadSvg(MDIR "settings-main.svg", btn_side, btn_side, false, false);
+    SDL_Surface *exit_pic     = LoadSvg(MDIR "close-main.svg", btn_side, btn_side, false, false);
 
-    SDL_Surface *back_i_pic    = LoadSvg(MDIR "prev-grey.svg", btn_side, btn_side, false);
-    SDL_Surface *forward_i_pic = LoadSvg(MDIR "next-grey.svg", btn_side, btn_side, false);
+    SDL_Surface *back_i_pic    = LoadSvg(MDIR "prev-grey.svg", btn_side, btn_side, false, false);
+    SDL_Surface *forward_i_pic = LoadSvg(MDIR "next-grey.svg", btn_side, btn_side, false, false);
 
-    SDL_Surface *back_p_pic    = LoadSvg(MDIR "prev-light.svg", btn_side, btn_side, false);
-    SDL_Surface *forward_p_pic = LoadSvg(MDIR "next-light.svg", btn_side, btn_side, false);
+    SDL_Surface *back_p_pic    = LoadSvg(MDIR "prev-light.svg", btn_side, btn_side, false, false);
+    SDL_Surface *forward_p_pic = LoadSvg(MDIR "next-light.svg", btn_side, btn_side, false, false);
 
     int tmpx = (rot ? game_config.wnd_h : game_config.wnd_w);
     int tmpy = (rot ? game_config.wnd_w : game_config.wnd_h);
-    desk_pic = LoadSvg(MDIR "desk.svg", tmpx, tmpy, rot);
-    wall_pic = LoadSvg(MDIR "wall.svg", tmpx, tmpy, rot);
+    desk_pic = LoadSvg(MDIR "desk.svg", tmpx, tmpy, rot, true);
+    wall_pic = LoadSvg(MDIR "wall.svg", tmpx, tmpy, rot, true);
     int hole_d = game_config.hole_r * 2;
-    fin_pic = LoadSvg(MDIR "openmoko.svg", hole_d, hole_d, rot);
+    fin_pic = LoadSvg(MDIR "openmoko.svg", hole_d, hole_d, rot, false);
 
     if (LoadImgErrors > 0)
     {
@@ -500,21 +623,6 @@ void render_window()
     gui_box_4.x2 = gui_rect_4.x + btn_side;
     gui_box_4.y2 = gui_rect_4.y + btn_side;
 
-    /* Window initialization */
-    ingame = true;
-    Uint32 sdl_flags = SDL_SWSURFACE;
-    if (user_set->fullscreen_mode != FULLSCREEN_NONE)
-        sdl_flags |= SDL_FULLSCREEN;
-    SDL_Surface *disp = SDL_SetVideoMode(disp_x, disp_y, disp_bpp, sdl_flags);
-    if (disp == NULL)
-    {
-        log_error("Can't set video mode %dx%dx%dbpp. Exiting.", disp_x, disp_y, disp_bpp);
-        return;
-    }
-    screen = disp;
-    SDL_Surface *gui_surface = disp;
-    SDL_WM_SetCaption("Mokomaze", "Mokomaze");
-
     //create surface for rendering the level
     render_pic = CreateSurface(SDL_SWSURFACE, game_config.wnd_w, game_config.wnd_h, disp);
 
@@ -540,7 +648,7 @@ void render_window()
     SDL_Rect disp_rect;
     disp_rect = screen_rect;
     
-    SDL_Color ballColor;
+    SDL_Color ballColor = {0};
     ballColor.r = 255;
     ballColor.g = 127;
     ballColor.b = 0;
