@@ -569,7 +569,7 @@ void render_window()
     title_rect.w = titleSurface->w;
     title_rect.h = titleSurface->h;
     SDL_BlitSurface(titleSurface, NULL, screen, &title_rect);
-    SDL_UpdateRect(screen, title_rect);
+    SDL_UpdateRect(screen, title_rect.x, title_rect.y, title_rect.w, title_rect.h);
     SDL_FreeSurface(titleSurface);
 
 //-- load pictures -------------------------------------------------------------
