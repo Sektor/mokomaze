@@ -41,55 +41,75 @@ static int input_work(void *data)
 {
     bool *finished = (bool*)data;
 
-    int fd = open(params.fname, O_RDONLY);
-    if (fd < 0)
+    bool reopen = true;
+    while (reopen)
     {
-        log_error("error opening file `%s'", params.fname);
-        return 0;
-    }
-
-    struct js_event js;
-    while (!(*finished))
-    {
-        size_t rval;
-        fd_set fds;
-        struct timeval t;
-
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-        t.tv_sec = 0;
-        t.tv_usec = 0;
-        select(1 + fd, &fds, NULL, NULL, &t);
-
-        if (FD_ISSET(fd, &fds))
+        int fd = open(params.fname, O_RDONLY);
+        if (fd < 0)
         {
-            rval = read(fd, &js, sizeof(js));
-            if (rval != sizeof(js))
-            {
-                log_error("error reading data");
-                break;
-            }
-
-            int n;
-            float v;
-            switch (js.type & ~JS_EVENT_INIT)
-            {
-            //case JS_EVENT_BUTTON:
-            //    break;
-            case JS_EVENT_AXIS:
-                n = js.number;
-                clamp(n, 0, sizeof(ac)-1);
-                v = js.value / params.max_axis;
-                clamp(v, -1, 1);
-                ac[n] = v;
-                break;
-            }
+            log_error("error opening file `%s'", params.fname);
+            return 0;
         }
 
-        SDL_Delay(params.interval);
+        bool err = false;
+        bool sample_readed = false;
+        struct js_event js;
+        while (!(*finished))
+        {
+            size_t rval;
+            fd_set fds;
+            struct timeval t;
+
+            FD_ZERO(&fds);
+            FD_SET(fd, &fds);
+            t.tv_sec = 0;
+            t.tv_usec = 0;
+            select(1 + fd, &fds, NULL, NULL, &t);
+
+            if (FD_ISSET(fd, &fds))
+            {
+                rval = read(fd, &js, sizeof(js));
+                if (rval != sizeof(js))
+                {
+                    log_error("error reading data");
+                    err = true;
+                    break;
+                }
+
+                int n;
+                float v;
+                switch (js.type & ~JS_EVENT_INIT)
+                {
+                //case JS_EVENT_BUTTON:
+                //    break;
+                case JS_EVENT_AXIS:
+                    n = js.number;
+                    clamp(n, 0, sizeof(ac)-1);
+                    v = js.value / params.max_axis;
+                    clamp(v, -1, 1);
+                    ac[n] = v;
+                    sample_readed = true;
+                    break;
+                }
+            }
+
+            SDL_Delay(params.interval);
+        }
+
+        close(fd);
+
+        if (err)
+        {
+            reopen = sample_readed;
+            if (reopen)
+                log_info("reopening device");
+            else
+                log_error("closing device");
+        }
+        else
+            reopen = false;
     }
 
-    close(fd);
     return 0;
 }
 

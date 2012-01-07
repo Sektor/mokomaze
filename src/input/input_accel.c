@@ -63,74 +63,94 @@ static int input_work(void *data)
 {
     bool *finished = (bool*)data;
 
-    int fd = open(params.fname, O_RDONLY, O_NONBLOCK);
-
-    if (fd < 0)
+    bool reopen = true;
+    while (reopen)
     {
-        log_error("error opening file `%s'", params.fname);
-        return 0;
-    }
+        int fd = open(params.fname, O_RDONLY, O_NONBLOCK);
 
-    int ac_cache[3] = {0};
-    struct input_event ev;
-    while (!(*finished))
-    {
-        size_t rval;
-        fd_set fds;
-        struct timeval t;
-
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-        t.tv_sec = 0;
-        t.tv_usec = 0;
-        select(1 + fd, &fds, NULL, NULL, &t);
-
-        if (FD_ISSET(fd, &fds))
+        if (fd < 0)
         {
-            rval = read(fd, &ev, sizeof(ev));
-
-            if (rval != sizeof(ev))
-            {
-                log_error("error reading data");
-                break;
-            }
-
-            if (ev.type == EV_REL)
-            {
-                if (ev.code == REL_X)
-                    ac_cache[0] = ev.value;
-                else if (ev.code == REL_Y)
-                    ac_cache[1] = ev.value;
-                else if (ev.code == REL_Z)
-                    ac_cache[2] = ev.value;
-            }
-            else if (ev.type == EV_ABS)
-            {
-                if (ev.code == ABS_X)
-                    ac_cache[0] = ev.value;
-                else if (ev.code == ABS_Y)
-                    ac_cache[1] = ev.value;
-                else if (ev.code == ABS_Z)
-                    ac_cache[2] = ev.value;
-            }
-            else if (ev.type == EV_SYN && ev.code == SYN_REPORT)
-            {
-                float acx = (float)ac_cache[0] / params.max_axis;
-                float acy = (float)ac_cache[1] / params.max_axis;
-                float acz = (float)ac_cache[2] / params.max_axis;
-                clamp(acx, -1, 1);
-                clamp(acy, -1, 1);
-                clamp(acz, -1, 1);
-                ac[0] = acx;
-                ac[1] = acy;
-                ac[2] = acz;
-            }
+            log_error("error opening file `%s'", params.fname);
+            return 0;
         }
 
-        SDL_Delay(params.interval);
+        bool err = false;
+        bool sample_readed = false;
+        int ac_cache[3] = {0};
+        struct input_event ev;
+        while (!(*finished))
+        {
+            size_t rval;
+            fd_set fds;
+            struct timeval t;
+
+            FD_ZERO(&fds);
+            FD_SET(fd, &fds);
+            t.tv_sec = 0;
+            t.tv_usec = 0;
+            select(1 + fd, &fds, NULL, NULL, &t);
+
+            if (FD_ISSET(fd, &fds))
+            {
+                rval = read(fd, &ev, sizeof(ev));
+
+                if (rval != sizeof(ev))
+                {
+                    log_error("error reading data");
+                    err = true;
+                    break;
+                }
+
+                if (ev.type == EV_REL)
+                {
+                    if (ev.code == REL_X)
+                        ac_cache[0] = ev.value;
+                    else if (ev.code == REL_Y)
+                        ac_cache[1] = ev.value;
+                    else if (ev.code == REL_Z)
+                        ac_cache[2] = ev.value;
+                }
+                else if (ev.type == EV_ABS)
+                {
+                    if (ev.code == ABS_X)
+                        ac_cache[0] = ev.value;
+                    else if (ev.code == ABS_Y)
+                        ac_cache[1] = ev.value;
+                    else if (ev.code == ABS_Z)
+                        ac_cache[2] = ev.value;
+                }
+                else if (ev.type == EV_SYN && ev.code == SYN_REPORT)
+                {
+                    float acx = (float)ac_cache[0] / params.max_axis;
+                    float acy = (float)ac_cache[1] / params.max_axis;
+                    float acz = (float)ac_cache[2] / params.max_axis;
+                    clamp(acx, -1, 1);
+                    clamp(acy, -1, 1);
+                    clamp(acz, -1, 1);
+                    ac[0] = acx;
+                    ac[1] = acy;
+                    ac[2] = acz;
+                    sample_readed = true;
+                }
+            }
+
+            SDL_Delay(params.interval);
+        }
+
+        close(fd);
+
+        if (err)
+        {
+            reopen = sample_readed;
+            if (reopen)
+                log_info("reopening device");
+            else
+                log_error("closing device");
+        }
+        else
+            reopen = false;
     }
 
-    close(fd);
     return 0;
 }
 
