@@ -298,6 +298,13 @@ static SuperDropDown *CreateDropDown(gcn::ListModel *listModel, int scrollBarWid
 
 // Settings window stuff
 gcn::Container *winCont = NULL;
+gcn::Container *presetsCont = NULL;
+gcn::Container *videoCont = NULL;
+gcn::Container *inputCont = NULL;
+gcn::Container *vibroCont = NULL;
+gcn::Container *aboutCont = NULL;
+int scrollHeight = 0;
+int downScrollAreaH = 0;
 
 // Presets tab stuff
 gcn::Button *presetDesktopButton = NULL;
@@ -321,12 +328,19 @@ gcn::CheckBox *chbInputInvertX = NULL;
 gcn::CheckBox *chbInputInvertY = NULL;
 SuperDropDown *downInputSens = NULL;
 SuperDropDown *downBallSpeed = NULL;
+gcn::Label *lblJsFile = NULL;
 SuperDropDown *downJsFile = NULL;
+gcn::Label *lblJsMax = NULL;
 SuperDropDown *downJsMax = NULL;
+gcn::Label *lblJsDelay = NULL;
 SuperDropDown *downJsDelay = NULL;
+gcn::Label *lblAccelFile = NULL;
 SuperDropDown *downAccelFile = NULL;
+gcn::Label *lblAccelMax = NULL;
 SuperDropDown *downAccelMax = NULL;
+gcn::Label *lblAccelDelay = NULL;
 SuperDropDown *downAccelDelay = NULL;
+int inputTabBaseHeight = 0;
 
 // Vibro tab stuff
 SuperDropDown *downVibroType = NULL;
@@ -347,6 +361,65 @@ static void ShowMsg(const std::string &text)
 {
     HideMsg();
     msgBox = new MsgBox(winCont, top, text);
+}
+
+void TuneGeomMaxView()
+{
+    bool en = !chbGeomMax->isSelected();
+    int tone = (en ? 255 : 150);
+    gcn::Color bg(tone, tone, tone);
+    downGeomX->setEnabled(en);
+    downGeomX->setBackgroundColor(bg);
+    downGeomY->setEnabled(en);
+    downGeomY->setBackgroundColor(bg);
+}
+
+void TuneInputTypeView()
+{
+    InputType itype = (InputType)downInputType->getSelectedValue<int>();
+    bool jsVis = false;
+    bool accelVis = false;
+    gcn::Widget *lastWidget = NULL;
+
+    if (itype == INPUT_DUMMY)
+    {
+    }
+    else if (itype == INPUT_KEYBOARD)
+    {
+    }
+    else if (itype == INPUT_JOYSTICK)
+    {
+        jsVis = true;
+        lastWidget = downJsDelay;
+    }
+    else if (itype == INPUT_ACCEL)
+    {
+        accelVis = true;
+        lastWidget = downAccelDelay;
+    }
+
+    lblJsFile->setVisible(jsVis);
+    downJsFile->setVisible(jsVis);
+    lblJsMax->setVisible(jsVis);
+    downJsMax->setVisible(jsVis);
+    lblJsDelay->setVisible(jsVis);
+    downJsDelay->setVisible(jsVis);
+    lblAccelFile->setVisible(accelVis);
+    downAccelFile->setVisible(accelVis);
+    lblAccelMax->setVisible(accelVis);
+    downAccelMax->setVisible(accelVis);
+    lblAccelDelay->setVisible(accelVis);
+    downAccelDelay->setVisible(accelVis);
+
+    int tabHeight = (lastWidget ? lastWidget->getY() + lastWidget->getHeight() : inputTabBaseHeight);
+    tabHeight = max(tabHeight + downScrollAreaH, scrollHeight);
+    inputCont->setHeight(tabHeight);
+}
+
+void TuneView()
+{
+    TuneGeomMaxView();
+    TuneInputTypeView();
 }
 
 static void LoadUiState()
@@ -373,6 +446,8 @@ static void LoadUiState()
     downAccelDelay->setSelectedValue<int>(user_set->input_accel_data.interval);
 
     downVibroType->setSelectedValue<int>(user_set->vibro_type);
+
+    TuneView();
 }
 
 #define DEFAULT_FR_VIBRO_DURATION 33
@@ -464,6 +539,22 @@ class SaveActionListener : public gcn::ActionListener
     }
 };
 
+class GeomMaxActionListener : public gcn::ActionListener
+{
+    void action(const gcn::ActionEvent &actionEvent)
+    {
+        TuneGeomMaxView();
+    }
+};
+
+class InputTypeActionListener : public gcn::ActionListener
+{
+    void action(const gcn::ActionEvent &actionEvent)
+    {
+        TuneInputTypeView();
+    }
+};
+
 static void RestoreUiDefaults()
 {
     chbScroll->setSelected(false);
@@ -494,18 +585,30 @@ class PresetActionListener : public gcn::ActionListener
 {
     void action(const gcn::ActionEvent &actionEvent)
     {
+        std::string note;
         const std::string &sourceId = actionEvent.getSource()->getId();
+        RestoreUiDefaults();
         if (sourceId == presetDesktopButton->getId())
         {
-            RestoreUiDefaults();
+            note = "Use the arrow keys\nto control the ball.";
         }
         else if (sourceId == presetFreerunnerButton->getId())
         {
+            downFullscreen->setSelectedValue<int>(FULLSCREEN_INGAME);
+
+            downInputType->setSelectedValue<int>(INPUT_JOYSTICK);
+            chbInputInvertY->setSelected(true);
+            downInputSens->setSelectedValue<float>(1.0);
+            downBallSpeed->setSelectedValue<float>(1.4);
+            downJsFile->setSelectedValue<std::string>(JS_DEV "1");
+            downJsMax->setSelectedValue<int>(1000);
+
+            downVibroType->setSelectedValue<int>(VIBRO_FREERUNNER);
+            
+            note = "Tilt the smartphone\nto control the ball.";
         }
         else if (sourceId == presetTouchbookButton->getId())
         {
-            RestoreUiDefaults();
-
             chbScroll->setSelected(true);
             downFullscreen->setSelectedValue<int>(FULLSCREEN_INGAME);
 
@@ -513,11 +616,24 @@ class PresetActionListener : public gcn::ActionListener
             chbInputSwapXy->setSelected(true);
             downInputSens->setSelectedValue<float>(1.0);
             downBallSpeed->setSelectedValue<float>(1.8);
+
+            note = "Tilt the tablet\nto control the ball.";
         }
         else if (sourceId == presetPandoraButton->getId())
         {
+            chbScroll->setSelected(true);
+            downFullscreen->setSelectedValue<int>(FULLSCREEN_INGAME);
+
+            downInputType->setSelectedValue<int>(INPUT_JOYSTICK);
+            downJsFile->setSelectedValue<std::string>(JS_DEV "1");
+
+            note = "Use the left nub\n(in joystick mode)\nto control the ball.";
         }
-        ShowMsg("Preset applied");
+        TuneView();
+        std::string text = "Preset applied";
+        if (!note.empty())
+            text += ".\n" + note;
+        ShowMsg(text);
     }
 };
 
@@ -570,6 +686,8 @@ QuitActionListener quitActionListener;
 QuitMouseListener quitMouseListener;
 CalPerformActionListener calPerformActionListener;
 CalResetActionListener calResetActionListener;
+GeomMaxActionListener geomMaxActionListener;
+InputTypeActionListener inputTypeActionListener;
 
 static void halt()
 {
@@ -713,11 +831,11 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     winCont->add(okButton, cancelButton->getX() - okButton->getWidth(), tabHeight);
 
     SuperTabbedArea *superTabbedArea = new SuperTabbedArea();
-    gcn::Container *presetsCont = new gcn::Container();
-    gcn::Container *videoCont = new gcn::Container();
-    gcn::Container *inputCont = new gcn::Container();
-    gcn::Container *vibroCont = new gcn::Container();
-    gcn::Container *aboutCont = new gcn::Container();
+    presetsCont = new gcn::Container();
+    videoCont = new gcn::Container();
+    inputCont = new gcn::Container();
+    vibroCont = new gcn::Container();
+    aboutCont = new gcn::Container();
 
     gcn::ScrollArea *presetsScroll = new gcn::ScrollArea();
     gcn::ScrollArea *videoScroll = new gcn::ScrollArea();
@@ -725,8 +843,8 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     gcn::ScrollArea *vibroScroll = new gcn::ScrollArea();
     gcn::ScrollArea *aboutScroll = new gcn::ScrollArea();
 
-    int scrollHeight = tabHeight - font_height * 1.7;
-    int downScrollAreaH = scrollHeight / 2;
+    scrollHeight = tabHeight - font_height * 1.7;
+    downScrollAreaH = scrollHeight / 2;
     superTabbedArea->setSize(winRect.width, tabHeight);
     presetsScroll->setSize(winRect.width, scrollHeight);
     videoScroll->setSize(winRect.width, scrollHeight);
@@ -829,6 +947,8 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     downFullscreen = CreateDropDown(fsListModel, scrollBarW, downScrollAreaH);
     downDelay = CreateDropDown(delayListModel, scrollBarW, downScrollAreaH);
 
+    chbGeomMax->addActionListener(&geomMaxActionListener);
+
     gcn::Widget *videoWidgets[] = {chbScroll, chbGeomMax, lblGeomX, downGeomX,
         lblGeomY, downGeomY, lblBpp, downBpp, lblFullscreen, downFullscreen,
         lblDelay, downDelay};
@@ -875,30 +995,36 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     gcn::Label *lblBallSpeed = new gcn::Label("Ball speed");
     downBallSpeed = CreateDropDown(inputSensListModel, scrollBarW, downScrollAreaH);
 
-    gcn::Label *lblJsFile = new gcn::Label("Joystick file");
+    lblJsFile = new gcn::Label("Joystick file");
     downJsFile = CreateDropDown(jsFileListModel, scrollBarW, downScrollAreaH);
-    gcn::Label *lblJsMax = new gcn::Label("Max joystick axis offset");
+    lblJsMax = new gcn::Label("Max joystick axis offset");
     downJsMax = CreateDropDown(axisMaxListModel, scrollBarW, downScrollAreaH);
-    gcn::Label *lblJsDelay = new gcn::Label("Joystick reading interval (ms)");
+    lblJsDelay = new gcn::Label("Joystick reading interval (ms)");
     downJsDelay = CreateDropDown(delayListModel, scrollBarW, downScrollAreaH);
 
-    gcn::Label *lblAccelFile = new gcn::Label("Accelerometer file");
+    lblAccelFile = new gcn::Label("Accelerometer file");
     downAccelFile = CreateDropDown(accelFileListModel, scrollBarW, downScrollAreaH);
-    gcn::Label *lblAccelMax = new gcn::Label("Max accelerometer axis offset");
+    lblAccelMax = new gcn::Label("Max accelerometer axis offset");
     downAccelMax = CreateDropDown(axisMaxListModel, scrollBarW, downScrollAreaH);
-    gcn::Label *lblAccelDelay = new gcn::Label("Accel. reading interval (ms)");
+    lblAccelDelay = new gcn::Label("Accel. reading interval (ms)");
     downAccelDelay = CreateDropDown(delayListModel, scrollBarW, downScrollAreaH);
 
+    downInputType->addActionListener(&inputTypeActionListener);
     btnInputCal->addActionListener(&calPerformActionListener);
     btnInputCalReset->addActionListener(&calResetActionListener);
 
-    gcn::Widget *inputWidgets[] = {lblInputType, downInputType, btnInputCal, btnInputCalReset,
+    gcn::Widget *inputBaseWidgets[] = {lblInputType, downInputType, btnInputCal, btnInputCalReset,
         chbInputSwapXy, chbInputInvertX, chbInputInvertY, lblInputSens, downInputSens,
-        lblBallSpeed, downBallSpeed, lblJsFile, downJsFile, lblJsMax, downJsMax, lblJsDelay, downJsDelay,
-        lblAccelFile, downAccelFile, lblAccelMax, downAccelMax, lblAccelDelay, downAccelDelay};
-    int inputTabHeight = FillContainer(inputCont, ARRAY_AND_SIZE(inputWidgets, gcn::Widget *), scrolledTabW);
-    inputCont->setSize(winRect.width, max(inputTabHeight + downScrollAreaH, scrollHeight));
-    HoldWidgets(inputWidgets);
+        lblBallSpeed, downBallSpeed};
+    gcn::Widget *inputJsWidgets[] = {lblJsFile, downJsFile, lblJsMax, downJsMax, lblJsDelay, downJsDelay};
+    gcn::Widget *inputAccelWidgets[] = {lblAccelFile, downAccelFile, lblAccelMax, downAccelMax, lblAccelDelay, downAccelDelay};
+    inputTabBaseHeight = FillContainer(inputCont, ARRAY_AND_SIZE(inputBaseWidgets, gcn::Widget *), scrolledTabW);
+    FillContainer(inputCont, ARRAY_AND_SIZE(inputJsWidgets, gcn::Widget *), scrolledTabW, inputTabBaseHeight);
+    FillContainer(inputCont, ARRAY_AND_SIZE(inputAccelWidgets, gcn::Widget *), scrolledTabW, inputTabBaseHeight);
+    inputCont->setSize(winRect.width, max(inputTabBaseHeight + downScrollAreaH, scrollHeight));
+    HoldWidgets(inputBaseWidgets);
+    HoldWidgets(inputJsWidgets);
+    HoldWidgets(inputAccelWidgets);
 
     /*
      * Init vibro tab
