@@ -621,9 +621,9 @@ static void RestoreUiDefaults()
     downAccelDelay->setSelectedValue<int>(2);
 
     downVibroType->setSelectedValue<int>(VIBRO_DUMMY);
-    downBumpMin->setSelectedValue<float>(1.0);
-    downBumpMax->setSelectedValue<float>(3.5);
-    downFrInterval->setSelectedValue<int>(33);
+    downBumpMin->setSelectedValue<float>(1.5);
+    downBumpMax->setSelectedValue<float>(15.0);
+    downFrInterval->setSelectedValue<int>(22);
 }
 
 class PresetActionListener : public gcn::ActionListener
@@ -649,6 +649,8 @@ class PresetActionListener : public gcn::ActionListener
             downJsMax->setSelectedValue<int>(1000);
 
             downVibroType->setSelectedValue<int>(VIBRO_FREERUNNER);
+            downBumpMin->setSelectedValue<float>(3.0);
+            downBumpMax->setSelectedValue<float>(40.0);
             
             note = "Tilt the smartphone\nto control the ball.";
         }
@@ -1079,13 +1081,13 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     const char *vibroTypeVariantNames[] = {VIBRO_DUMMY_STR, VIBRO_FREERUNNER_STR};
     gcn::ListModel *vibroTypeListModel = CreateGenericListModel(vibroTypeVariantNames, ARRAY_AND_SIZE(vibroTypeVariants, int));
 
-    const float bumpMinVariants[] = {0.7, 1.0, 1.2, 1.5, 1.7, 2.0, 2.2, 2.5};
+    const float bumpMinVariants[] = {0.7, 1.0, 1.2, 1.5, 1.7, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
     gcn::ListModel *bumpMinListModel = CreateGenericListModel(ARRAY_AND_SIZE(bumpMinVariants, float));
 
-    const float bumpMaxVariants[] = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0};
+    const float bumpMaxVariants[] = {10.0, 12.0, 15.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0, 120.0, 150.0};
     gcn::ListModel *bumpMaxListModel = CreateGenericListModel(ARRAY_AND_SIZE(bumpMaxVariants, float));
 
-    const int frIntervalVariants[] = {20, 22, 25, 27, 30, 33, 35, 37, 40};
+    const int frIntervalVariants[] = {10, 12, 15, 17, 20, 22, 25, 27, 30, 33, 35, 37, 40, 42, 45, 47, 50};
     gcn::ListModel *frIntervalListModel = CreateGenericListModel(ARRAY_AND_SIZE(frIntervalVariants, int));
 
     gcn::ListModel *vibroListModels[] = {vibroTypeListModel, bumpMinListModel, bumpMaxListModel, frIntervalListModel};
