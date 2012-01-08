@@ -344,11 +344,19 @@ bool load_levelpack()
     return true;
 }
 
+#define CONFIG_FORMAT 1
 bool load_config(const char *fname)
 {
     log_info("Loading settings file `%s'", fname);
     if (!load_json(fname))
         return false;
+
+    int config_format = _json_object_get_member_int(root_object, "config_format");
+    if (config_format != CONFIG_FORMAT)
+    {
+        log_info("Mismatched config_format", fname);
+        return false;
+    }
 
     user_set.levelpack = _json_object_dup_member_string(root_object, "levelpack");
     if (!user_set.levelpack)
