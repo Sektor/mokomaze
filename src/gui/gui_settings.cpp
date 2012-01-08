@@ -28,6 +28,57 @@
 #include "../fonts.h"
 #include "../mazecore/mazehelpers.h"
 
+#define FIX_FOCUSHANDLER_EXCEPTION
+#define FIX_TAB_SCROLL
+#define FIX_DROPDOWN_HEIGHT
+
+// Issue 59: sometimes dropdown halts applications when dropdown is clicked
+// http://code.google.com/p/guichan/issues/detail?id=59
+class SuperGui : public gcn::Gui
+{
+#ifdef FIX_FOCUSHANDLER_EXCEPTION
+protected:
+    void handleModalFocusGained()
+    {
+        // Distribute an event to all widgets in the "widget with mouse" queue.
+        while (!mWidgetWithMouseQueue.empty())
+        {
+            gcn::Widget* widget = mWidgetWithMouseQueue.front();
+
+            if (gcn::Widget::widgetExists(widget) && widget->_getFocusHandler())
+            {
+                distributeMouseEvent(widget,
+                                     gcn::MouseEvent::EXITED,
+                                     mLastMousePressButton,
+                                     mLastMouseX,
+                                     mLastMouseY,
+                                     true,
+                                     true);
+            }
+
+            mWidgetWithMouseQueue.pop_front();
+        }
+
+        mFocusHandler->setLastWidgetWithModalMouseInputFocus(mFocusHandler->getModalMouseInputFocused());
+    }
+#endif
+};
+
+// Issue 137: TabbedArea does not call the logic()-method of its children
+// http://code.google.com/p/guichan/issues/detail?id=137
+class SuperTabbedArea : public gcn::TabbedArea
+{
+#ifdef FIX_TAB_SCROLL
+    void logic()
+    {
+        for (unsigned int i = 0; i < mTabs.size(); i++)
+        {
+            mTabs[i].second->logic();
+        }
+    }
+#endif
+};
+
 // Common stuff
 static bool running = false;
 static User *user_set = NULL;
@@ -43,7 +94,7 @@ gcn::SDLGraphics *graphics = NULL;       // Graphics driver
 gcn::SDLImageLoader *imageLoader = NULL; // For loading images
 
 // Guichan stuff
-gcn::Gui *gui = NULL;       // GUI object - binds it all together
+SuperGui *gui = NULL;       // GUI object - binds it all together
 gcn::Container *top = NULL; // Top container
 Font *font = NULL;          // Fonts
 Font *titleFont = NULL;
@@ -65,19 +116,6 @@ bool need_quit = false;
 // Constants
 #define JS_DEV "/dev/input/js"
 #define ACCEL_TOUCHBOOK "/dev/input/accel0"
-
-// Issue 137: TabbedArea does not call the logic()-method of its children
-// http://code.google.com/p/guichan/issues/detail?id=137
-class SuperTabbedArea : public gcn::TabbedArea
-{
-    void logic()
-    {
-        for (unsigned int i = 0; i < mTabs.size(); i++)
-        {
-            mTabs[i].second->logic();
-        }
-    }
-};
 
 template<class X>
 class ResourceHolder
@@ -232,12 +270,6 @@ public:
     {
     }
 
-    void adjustHeight()
-    {
-        mListBox->setHeight(scrollAreaHeight);
-        gcn::DropDown::adjustHeight();
-    }
-
     template<class X>
     X getSelectedValue()
     {
@@ -251,6 +283,13 @@ public:
         int value_id = static_cast<GenericListModel<X> *>(getListModel())->findValueId(val);
         if (value_id >= 0)
             setSelected(value_id);
+    }
+
+#ifdef FIX_DROPDOWN_HEIGHT
+    void adjustHeight()
+    {
+        mListBox->setHeight(scrollAreaHeight);
+        gcn::DropDown::adjustHeight();
     }
 
 protected:
@@ -280,6 +319,7 @@ protected:
             mInternalFocusHandler.focusNone();
         }
     }
+#endif
 };
 
 static SuperDropDown *CreateDropDown(gcn::ListModel *listModel, int scrollBarWidth, int scrollAreaH)
@@ -846,7 +886,7 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     // Set the dimension of the top container to match the screen.
     top->setDimension(guiRect);
     top->setOpaque(false);
-    gui = new gcn::Gui();
+    gui = new SuperGui();
     // Set gui to use the SDLGraphics object.
     gui->setGraphics(graphics);
     // Set gui to use the SDLInput object
