@@ -24,7 +24,7 @@ static void vibro_init()
 {
 }
 
-static void vibro_bump(uint8_t level)
+static void vibro_bump(float level)
 {
 }
 

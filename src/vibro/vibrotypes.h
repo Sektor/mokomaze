@@ -27,7 +27,7 @@
 typedef struct {
     void (*init)();
     void (*shutdown)();
-    void (*bump)(uint8_t level);
+    void (*bump)(float level);
 } VibroInterface;
 
 #endif /* VIBROTYPES_H */

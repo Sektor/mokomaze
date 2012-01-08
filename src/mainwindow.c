@@ -72,24 +72,18 @@ static bool ingame = false;
 
 //==============================================================================
 
-#define vibro_force_k  1.0
-#define MAX_BUMP_SPEED 240.0
-#define MIN_BUMP_SPEED 70.0
+#define MAX_BUMP_SPEED 340.0
+#define MIN_BUMP_SPEED 100.0
 void BumpVibrate(float speed)
 {
-    if (speed>0)
-    {
-        //log_debug("BumpVibrate(%f)",speed);
-        if (speed>=MIN_BUMP_SPEED)
-        {
-            float k = (speed-MIN_BUMP_SPEED)/(MAX_BUMP_SPEED-MIN_BUMP_SPEED);
-            clamp_max(k, 1);
-            int lev = (0.27+0.73*k) * vibro_force_k * 255;
-            clamp_max(lev, 255);
-            uint8_t vlevel = (uint8_t)lev;
-            vibro.bump(vlevel);
-        }
-    }
+    if (speed <= 0)
+        return;
+    //log_debug("BumpVibrate(%f)",speed);
+    if (speed < MIN_BUMP_SPEED)
+        return;
+    float k = (speed - MIN_BUMP_SPEED) / (MAX_BUMP_SPEED - MIN_BUMP_SPEED);
+    clamp_max(k, 1);
+    vibro.bump(k);
 }
 
 void ClearCache(char *file, char *file_hash)

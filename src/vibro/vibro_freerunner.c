@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
+#include "mazecore/mazehelpers.h"
 #include "vibro_freerunner.h"
 
 #define LOG_MODULE "Vibro::Freerunner"
@@ -65,17 +66,19 @@ static Uint32 callback(Uint32 interval, void *param)
     return 0;
 }
 
-static void vibro_bump(uint8_t level)
+static void vibro_bump(float level)
 {
-    if (fvibro) 
-    {
-        if (!vibro_timer)
-        {
-            fprintf(fvibro, "%d", level);
-            fflush(fvibro);
-            vibro_timer = SDL_AddTimer(params.duration, callback, NULL);
-        }
-    }
+    if (!fvibro || vibro_timer)
+        return;
+
+    const float lmin = 0.27;
+    const int vmax = 255;
+    int vlevel = (lmin + (1 - lmin) * level) * vmax;
+    clamp_max(vlevel, vmax);
+
+    fprintf(fvibro, "%d", vlevel);
+    fflush(fvibro);
+    vibro_timer = SDL_AddTimer(params.duration, callback, NULL);
 }
 
 static void vibro_shutdown()

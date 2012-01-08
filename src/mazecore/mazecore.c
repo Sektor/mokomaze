@@ -215,7 +215,7 @@ void nearCallback(void *data, dGeomID o1, dGeomID o2)
 
             float pvel = vlen*cosa;
             if (vibro_callback)
-                vibro_callback(-pvel*70);
+                vibro_callback(-pvel*100);
         }
     }
 }
