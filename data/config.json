@@ -12,8 +12,8 @@
     "input_type": "keyboard",
     "vibro_type": "dummy",
     "ball_speed": 1.0,
-    "bump_min_speed": 1.0,
-    "bump_max_speed": 3.5,
+    "bump_min_speed": 1.5,
+    "bump_max_speed": 15.0,
 
     "input_calibration_data": {
         "swap_xy": false,
@@ -37,7 +37,7 @@
     },
 
     "vibro_freeerunner_data": {
-        "duration": 33
+        "duration": 22
     }
 
 }
