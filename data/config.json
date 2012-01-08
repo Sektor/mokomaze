@@ -12,6 +12,8 @@
     "input_type": "keyboard",
     "vibro_type": "dummy",
     "ball_speed": 1.0,
+    "bump_min_speed": 1.0,
+    "bump_max_speed": 3.5,
 
     "input_calibration_data": {
         "swap_xy": false,

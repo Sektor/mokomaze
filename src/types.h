@@ -47,6 +47,8 @@ typedef struct {
     int frame_delay;
     InputType input_type;
     float ball_speed;
+    float bump_min_speed;
+    float bump_max_speed;
     InputCalibrationData input_calibration_data;
     InputJoystickData input_joystick_data;
     InputAccelData input_accel_data;

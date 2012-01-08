@@ -344,6 +344,11 @@ int inputTabBaseHeight = 0;
 
 // Vibro tab stuff
 SuperDropDown *downVibroType = NULL;
+SuperDropDown *downBumpMin = NULL;
+SuperDropDown *downBumpMax = NULL;
+gcn::Label *lblFrInterval = NULL;
+SuperDropDown *downFrInterval = NULL;
+int vibroTabBaseHeight = 0;
 
 // Message box stuff
 MsgBox *msgBox = NULL;
@@ -416,10 +421,34 @@ void TuneInputTypeView()
     inputCont->setHeight(tabHeight);
 }
 
+void TuneVibroTypeView()
+{
+    VibroType vtype = (VibroType)downVibroType->getSelectedValue<int>();
+    bool frVis = false;
+    gcn::Widget *lastWidget = NULL;
+
+    if (vtype == VIBRO_DUMMY)
+    {
+    }
+    else if (vtype == VIBRO_FREERUNNER)
+    {
+        frVis = true;
+        lastWidget = downFrInterval;
+    }
+
+    lblFrInterval->setVisible(frVis);
+    downFrInterval->setVisible(frVis);
+
+    int tabHeight = (lastWidget ? lastWidget->getY() + lastWidget->getHeight() : vibroTabBaseHeight);
+    tabHeight = max(tabHeight + downScrollAreaH, scrollHeight);
+    vibroCont->setHeight(tabHeight);
+}
+
 void TuneView()
 {
     TuneGeomMaxView();
     TuneInputTypeView();
+    TuneVibroTypeView();
 }
 
 static void LoadUiState()
@@ -446,11 +475,12 @@ static void LoadUiState()
     downAccelDelay->setSelectedValue<int>(user_set->input_accel_data.interval);
 
     downVibroType->setSelectedValue<int>(user_set->vibro_type);
+    downBumpMin->setSelectedValue<float>(user_set->bump_min_speed);
+    downBumpMax->setSelectedValue<float>(user_set->bump_max_speed);
+    downFrInterval->setSelectedValue<int>(user_set->vibro_freeerunner_data.duration);
 
     TuneView();
 }
-
-#define DEFAULT_FR_VIBRO_DURATION 33
 
 static void SaveUiState()
 {
@@ -483,7 +513,9 @@ static void SaveUiState()
         (user_set->input_accel_data.interval != downAccelDelay->getSelectedValue<int>());
     vibro_set_modified =
         (user_set->vibro_type != (VibroType)downVibroType->getSelectedValue<int>()) ||
-        (user_set->vibro_freeerunner_data.duration != DEFAULT_FR_VIBRO_DURATION);
+        //(user_set->bump_min_speed != downBumpMin->getSelectedValue<float>()) ||
+        //(user_set->bump_max_speed != downBumpMax->getSelectedValue<float>()) ||
+        (user_set->vibro_freeerunner_data.duration != downFrInterval->getSelectedValue<int>());
 
     // Set new values
     user_set_new->scrolling = chbScroll->isSelected();
@@ -519,7 +551,9 @@ static void SaveUiState()
     user_set->input_accel_data.interval = downAccelDelay->getSelectedValue<int>();
 
     user_set->vibro_type = (VibroType)downVibroType->getSelectedValue<int>();
-    user_set->vibro_freeerunner_data.duration = DEFAULT_FR_VIBRO_DURATION;
+    user_set->bump_min_speed = downBumpMin->getSelectedValue<float>();
+    user_set->bump_max_speed = downBumpMax->getSelectedValue<float>();
+    user_set->vibro_freeerunner_data.duration = downFrInterval->getSelectedValue<int>();
 
     // Display message if necessary
     if (video_set_modified)
@@ -555,6 +589,14 @@ class InputTypeActionListener : public gcn::ActionListener
     }
 };
 
+class VibroTypeActionListener : public gcn::ActionListener
+{
+    void action(const gcn::ActionEvent &actionEvent)
+    {
+        TuneVibroTypeView();
+    }
+};
+
 static void RestoreUiDefaults()
 {
     chbScroll->setSelected(false);
@@ -579,6 +621,9 @@ static void RestoreUiDefaults()
     downAccelDelay->setSelectedValue<int>(2);
 
     downVibroType->setSelectedValue<int>(VIBRO_DUMMY);
+    downBumpMin->setSelectedValue<float>(1.0);
+    downBumpMax->setSelectedValue<float>(3.5);
+    downFrInterval->setSelectedValue<int>(33);
 }
 
 class PresetActionListener : public gcn::ActionListener
@@ -688,6 +733,7 @@ CalPerformActionListener calPerformActionListener;
 CalResetActionListener calResetActionListener;
 GeomMaxActionListener geomMaxActionListener;
 InputTypeActionListener inputTypeActionListener;
+VibroTypeActionListener vibroTypeActionListener;
 
 static void halt()
 {
@@ -1033,16 +1079,38 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     const char *vibroTypeVariantNames[] = {VIBRO_DUMMY_STR, VIBRO_FREERUNNER_STR};
     gcn::ListModel *vibroTypeListModel = CreateGenericListModel(vibroTypeVariantNames, ARRAY_AND_SIZE(vibroTypeVariants, int));
 
-    gcn::ListModel *vibroListModels[] = {vibroTypeListModel};
+    const float bumpMinVariants[] = {0.7, 1.0, 1.2, 1.5, 1.7, 2.0, 2.2, 2.5};
+    gcn::ListModel *bumpMinListModel = CreateGenericListModel(ARRAY_AND_SIZE(bumpMinVariants, float));
+
+    const float bumpMaxVariants[] = {3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0};
+    gcn::ListModel *bumpMaxListModel = CreateGenericListModel(ARRAY_AND_SIZE(bumpMaxVariants, float));
+
+    const int frIntervalVariants[] = {20, 22, 25, 27, 30, 33, 35, 37, 40};
+    gcn::ListModel *frIntervalListModel = CreateGenericListModel(ARRAY_AND_SIZE(frIntervalVariants, int));
+
+    gcn::ListModel *vibroListModels[] = {vibroTypeListModel, bumpMinListModel, bumpMaxListModel, frIntervalListModel};
     HoldListModels(vibroListModels);
 
     gcn::Label *lblVibroType = new gcn::Label("Vibro device type");
     downVibroType = CreateDropDown(vibroTypeListModel, scrollBarW, downScrollAreaH);
+    gcn::Label *lblBumpMin = new gcn::Label("Min bump speed");
+    downBumpMin = CreateDropDown(bumpMinListModel, scrollBarW, downScrollAreaH);
+    gcn::Label *lblBumpMax = new gcn::Label("Max bump speed");
+    downBumpMax = CreateDropDown(bumpMaxListModel, scrollBarW, downScrollAreaH);
 
-    gcn::Widget *vibroWidgets[] = {lblVibroType, downVibroType};
-    int vibroTabHeight = FillContainer(vibroCont, ARRAY_AND_SIZE(vibroWidgets, gcn::Widget *), winRect.width);
-    vibroCont->setSize(winRect.width, max(vibroTabHeight + downScrollAreaH, scrollHeight));
-    HoldWidgets(vibroWidgets);
+    lblFrInterval = new gcn::Label("Vibration interval (ms)");
+    downFrInterval = CreateDropDown(frIntervalListModel, scrollBarW, downScrollAreaH);
+    
+    downVibroType->addActionListener(&vibroTypeActionListener);
+
+    gcn::Widget *vibroBaseWidgets[] = {lblVibroType, downVibroType,
+        lblBumpMin, downBumpMin, lblBumpMax, downBumpMax};
+    gcn::Widget *vibroFrWidgets[] = {lblFrInterval, downFrInterval};
+    vibroTabBaseHeight = FillContainer(vibroCont, ARRAY_AND_SIZE(vibroBaseWidgets, gcn::Widget *), scrolledTabW);
+    FillContainer(vibroCont, ARRAY_AND_SIZE(vibroFrWidgets, gcn::Widget *), scrolledTabW, vibroTabBaseHeight);
+    vibroCont->setSize(winRect.width, max(vibroTabBaseHeight + downScrollAreaH, scrollHeight));
+    HoldWidgets(vibroBaseWidgets);
+    HoldWidgets(vibroFrWidgets);
 
     /*
      * Init about tab

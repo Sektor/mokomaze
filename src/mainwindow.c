@@ -72,16 +72,16 @@ static bool ingame = false;
 
 //==============================================================================
 
-#define MAX_BUMP_SPEED 340.0
-#define MIN_BUMP_SPEED 100.0
 void BumpVibrate(float speed)
 {
     if (speed <= 0)
         return;
     //log_debug("BumpVibrate(%f)",speed);
-    if (speed < MIN_BUMP_SPEED)
+    float bmin = user_set->bump_min_speed;
+    float bmax = user_set->bump_max_speed;
+    if (speed < bmin || bmin >= bmax)
         return;
-    float k = (speed - MIN_BUMP_SPEED) / (MAX_BUMP_SPEED - MIN_BUMP_SPEED);
+    float k = (speed - bmin) / (bmax - bmin);
     clamp_max(k, 1);
     vibro.bump(k);
 }

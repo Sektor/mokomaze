@@ -369,6 +369,8 @@ bool load_config(const char *fname)
     user_set.scrolling = _json_object_get_member_boolean(root_object, "scrolling");
     user_set.frame_delay = _json_object_get_member_int(root_object, "frame_delay");
     user_set.ball_speed = (float)_json_object_get_member_double(root_object, "ball_speed");
+    user_set.bump_min_speed = (float)_json_object_get_member_double(root_object, "bump_min_speed");
+    user_set.bump_max_speed = (float)_json_object_get_member_double(root_object, "bump_max_speed");
 
     char *fullscreen_str = _json_object_dup_member_string(root_object, "fullscreen_mode");
     user_set.fullscreen_mode = StrToFullscreenMode(fullscreen_str, true);
@@ -450,6 +452,8 @@ void SetJsonValues()
     _json_object_set_member_boolean(root_object, "scrolling", user_set.scrolling);
     _json_object_set_member_int(root_object, "frame_delay", user_set.frame_delay);
     _json_object_set_member_double(root_object, "ball_speed", user_set.ball_speed);
+    _json_object_set_member_double(root_object, "bump_min_speed", user_set.bump_min_speed);
+    _json_object_set_member_double(root_object, "bump_max_speed", user_set.bump_max_speed);
 
     char *fullscreen_mode_str = NULL;
     switch (user_set.fullscreen_mode)
