@@ -711,7 +711,7 @@ class CalPerformActionListener : public gcn::ActionListener
     void action(const gcn::ActionEvent &actionEvent)
     {
         calibration_requested = true;
-        ShowMsg("Calibration starts\nwhen you return\nto the game");
+        ShowMsg("Calibration will start\nwhen you return\nto the game");
     }
 };
 
