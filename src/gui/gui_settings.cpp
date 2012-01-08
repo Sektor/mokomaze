@@ -1139,15 +1139,18 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     int aboutTabHeight = FillContainer(aboutCont, ARRAY_AND_SIZE(aboutWidgets, gcn::Widget *), winRect.width, lblsY);
     aboutCont->setSize(winRect.width, max(aboutTabHeight, scrollHeight));
     HoldWidgets(aboutWidgets);
-
-    /*
-     * Load UI state
-     */
-    LoadUiState();
 }
 
 void settings_show(bool *_calibration_requested, bool *_video_set_modified, bool *_input_set_modified, bool *_vibro_set_modified)
 {
+    /*
+     * Load UI state
+     */
+    LoadUiState();
+    
+    /*
+     * Show window
+     */
     running = true;
     need_quit = false;
     calibration_requested = false;
