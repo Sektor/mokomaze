@@ -564,22 +564,20 @@ void SaveUserSettings()
 
 void parse_command_line(int argc, char *argv[])
 {
-    struct arg_str *input  = arg_str0("i","input","<type>", "input device type");
-    struct arg_rem *input1 = arg_rem (NULL, "('dummy', 'keyboard' or 'joystick')");
-    struct arg_str *vibro  = arg_str0("v","vibro","<type>", "vibro device type");
-    struct arg_rem *vibro1 = arg_rem (NULL, "('dummy' or 'freerunner')");
+    struct arg_str *input  = arg_str0("i","input","<type>", "input device type ('dummy', 'keyboard',");
+    struct arg_rem *input1 = arg_rem (NULL, "'joystick' or 'accelerometer')");
+    struct arg_str *vibro  = arg_str0("v","vibro","<type>", "vibro device type ('dummy' or 'freerunner')");
     struct arg_str *cal    = arg_str0("c","calibration","<option>", "perform input device calibration ('auto' option)");
     struct arg_rem *cal1   = arg_rem (NULL, "or reset calibration data ('reset' option)");
     struct arg_int *level  = arg_int0("l","level",NULL, "define level from which the game will be started");
-    struct arg_int *geom_x = arg_int0("x",NULL,NULL, "set window width");
-    struct arg_int *geom_y = arg_int0("y",NULL,NULL, "set window height");
-    struct arg_int *bpp    = arg_int0(NULL,"bpp",NULL, "set color depth (16 or 32 bits per pixel)");
+    struct arg_int *geom_x = arg_int0("x",NULL,NULL, "set window width (0 = maximum)");
+    struct arg_int *geom_y = arg_int0("y",NULL,NULL, "set window height (0 = maximum)");
+    struct arg_int *bpp    = arg_int0("b","bpp",NULL, "set color depth (16/32 bits/pixel, 0 = auto detect)");
     struct arg_str *scroll = arg_str0("s","scrolling","<boolean>", "scroll game window if the level does not fit to it");
-    struct arg_str *fscr   = arg_str0("f","fullscreen","<mode>", "set fullscreen mode");
-    struct arg_rem *fscr1  = arg_rem (NULL, "('none', 'ingame' or 'always')");
+    struct arg_str *fscr   = arg_str0("f","fullscreen","<mode>", "set fullscreen mode ('none', 'ingame' or 'always')");
     struct arg_lit *help   = arg_lit0(NULL,"help", "print this help and exit");
     struct arg_end *end    = arg_end (20);
-    void* argtable[] = {input,input1,vibro,vibro1,cal,cal1,level,geom_x,geom_y,bpp,scroll,fscr,fscr1,help,end};
+    void* argtable[] = {input,input1,vibro,cal,cal1,level,geom_x,geom_y,bpp,scroll,fscr,help,end};
     const char* progname = "mokomaze";
     int nerrors = 0;
 

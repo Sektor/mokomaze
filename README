@@ -1,12 +1,12 @@
-                               Mokomaze
+                                  Mokomaze
 
-               Copyright (C) 2009-2012 Anton Olkhovik
-                         <ant007h@gmail.com>
-======================================================================
+                   Copyright (C) 2009-2012 Anton Olkhovik
+                             <ant007h@gmail.com>
+================================================================================
 
-Mokomaze is an open source implementation of the classic game where
-you control a steel ball by tilting a wooden labyrinth. It is
-written in C using SDL and adapted for Neo Freerunner.
+Mokomaze is an open source implementation of the classic game where you control
+a steel ball by tilting a wooden labyrinth. It is written in C using SDL and
+adapted for Neo Freerunner.
 
 Benefits:
  * controlled by accelerometer
@@ -16,29 +16,24 @@ Benefits:
 
 Running
 -------
-Click on Mokomaze logo on the home screen or application menu or run it
-from the terminal by typing
+Click on Mokomaze logo on the home screen or application menu or run it from the
+terminal by typing
   $ mokomaze
 Some parameters can also be passed to it:
   mokomaze [-i <type>] [-v <type>] [-c <option>] [-l <int>] [-x <int>]
-  [-y <int>] [--bpp=<int>] [-s <boolean>] [-f <mode>] [--help]
-    -i, --input=<type>        input device type
-                              ('dummy', 'keyboard' or 'joystick')
-    -v, --vibro=<type>        vibro device type
-                              ('dummy' or 'freerunner')
-    -c, --calibration=<option> perform input device calibration
-                              ('auto' option) or reset calibration data
-                              ('reset' option)
-    -l, --level=<int>         define level from which the game will be
-                              started
-    -x <int>                  set window width
-    -y <int>                  set window height
-    --bpp=<int>               set color depth (16 or 32 bits per pixel)
-    -s, --scrolling=<boolean> scroll game window if the level does not
-                              fit to it
-    -f, --fullscreen=<mode>   set fullscreen mode
-                              ('none', 'ingame' or 'always')
-    --help                    print this help and exit
+  [-y <int>] [-b <int>] [-s <boolean>] [-f <mode>] [--help]
+  -i, --input=<type>        input device type ('dummy', 'keyboard',
+                            'joystick' or 'accelerometer')
+  -v, --vibro=<type>        vibro device type ('dummy' or 'freerunner')
+  -c, --calibration=<option> perform input device calibration ('auto' option)
+                            or reset calibration data ('reset' option)
+  -l, --level=<int>         define level from which the game will be started
+  -x <int>                  set window width (0 = maximum)
+  -y <int>                  set window height (0 = maximum)
+  -b, --bpp=<int>           set color depth (16/32 bits/pixel, 0 = auto detect)
+  -s, --scrolling=<boolean> scroll game window if the level does not fit to it
+  -f, --fullscreen=<mode>   set fullscreen mode ('none', 'ingame' or 'always')
+  --help                    print this help and exit
 
   Examples:
     mokomaze
@@ -50,25 +45,24 @@ Some parameters can also be passed to it:
 
 Playing
 -------
-Control the ball by tilting your Freerunner. Reach the exit, marked by
-Openmoko logo, avoiding other holes.
+Control the ball by tilting your Freerunner. Reach the exit, marked by Openmoko
+logo, avoiding other holes.
 
 Level pack file format
 ----------------------
-Level pack file is written in JSON and has a simple structure. There are
-several game levels in the file. Each level consists of "boxes" (walls),
-"holes" and "checkpoints". Boxes are specified by 2 points:
-  (x1,y1) - top left point in current screen coordinate system
-            (Mokomaze does not change screen parameters)
+Level pack file is written in JSON and has a simple structure. There are several
+game levels in the file. Each level consists of "boxes" (walls), "holes" and
+"checkpoints". Boxes are specified by 2 points:
+  (x1,y1) - top left point
   (x2,y2) - bottom right point
 
 Graphic content
 ---------------
-Menu icons are based on the KDE icon from the Oxygen theme. The logo of
-Mokomaze was created under the impression of Neverball logo. Other
-pictures are made by the author of the game.
+Menu icons are based on the KDE icon from the Oxygen theme. The logo of Mokomaze
+was created under the impression of Neverball logo. Other pictures are made by
+the author of the game.
 
 No Warranty
 -----------
-Mokomaze comes with ABSOLUTELY NO WARRANTY. See the COPYING file for
-details.
+Mokomaze comes with ABSOLUTELY NO WARRANTY. See the COPYING file for details.
+
