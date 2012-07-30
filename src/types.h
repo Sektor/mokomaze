@@ -51,6 +51,7 @@ typedef struct {
     float bump_max_speed;
     InputCalibrationData input_calibration_data;
     InputJoystickData input_joystick_data;
+    InputJoystickSdlData input_joystick_sdl_data;
     InputAccelData input_accel_data;
     VibroType vibro_type;
     VibroFreerunnerData vibro_freeerunner_data;

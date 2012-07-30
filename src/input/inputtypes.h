@@ -28,6 +28,7 @@ typedef struct {
     void (*init)();
     void (*shutdown)();
     void (*read)(float *x, float *y, float *z);
+    void (*update)(void *data);
 } InputInterface;
 
 #endif /* INPUTTYPES_H */

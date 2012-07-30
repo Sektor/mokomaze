@@ -106,9 +106,15 @@ int _json_object_get_member_int(JsonObject *obj, const char *member_name)
 double _json_object_get_member_double(JsonObject *obj, const char *member_name)
 {
     JSON_GET_MEMBER_NODE
-    if ((!member_node) || (json_node_get_value_type(member_node) != G_TYPE_DOUBLE))
-        return 0.0;
-    return json_node_get_double(member_node);
+    if (member_node)
+    {
+        GType vtype = json_node_get_value_type(member_node);
+        if (vtype == G_TYPE_DOUBLE)
+            return json_node_get_double(member_node);
+        else if (vtype == G_TYPE_INT64)
+            return json_node_get_int(member_node);
+    }
+    return 0.0;
 }
 char* _json_object_dup_member_string(JsonObject *obj, const char *member_name)
 {
@@ -191,6 +197,8 @@ InputType StrToInputType(char *str, bool free_str)
             res = INPUT_KEYBOARD;
         else if (!strcmp(str, INPUT_JOYSTICK_STR))
             res = INPUT_JOYSTICK;
+        else if (!strcmp(str, INPUT_JOYSTICK_SDL_STR))
+            res = INPUT_JOYSTICK_SDL;
         else if (!strcmp(str, INPUT_ACCEL_STR))
             res = INPUT_ACCEL;
         if (free_str)
@@ -399,6 +407,10 @@ bool load_config(const char *fname)
     user_set.input_joystick_data.max_axis = (float)_json_object_get_member_double(input_joystick_data_object, "max_axis");
     user_set.input_joystick_data.interval = _json_object_get_member_int(input_joystick_data_object, "interval");
 
+    JsonObject *input_joystick_sdl_data_object = _json_object_get_member_object(root_object, "input_joystick_sdl_data");
+    user_set.input_joystick_sdl_data.number = _json_object_get_member_int(input_joystick_sdl_data_object, "number");
+    user_set.input_joystick_sdl_data.max_axis = (float)_json_object_get_member_double(input_joystick_sdl_data_object, "max_axis");
+
     JsonObject *input_accel_data_object = _json_object_get_member_object(root_object, "input_accelerometer_data");
     user_set.input_accel_data.fname = _json_object_dup_member_string(input_accel_data_object, "fname");
     if (!user_set.input_accel_data.fname)
@@ -479,6 +491,9 @@ void SetJsonValues()
     case INPUT_JOYSTICK:
         input_type_str = INPUT_JOYSTICK_STR;
         break;
+    case INPUT_JOYSTICK_SDL:
+        input_type_str = INPUT_JOYSTICK_SDL_STR;
+        break;
     case INPUT_ACCEL:
         input_type_str = INPUT_ACCEL_STR;
         break;
@@ -515,6 +530,10 @@ void SetJsonValues()
     _json_object_set_member_string(input_joystick_data_object, "fname", user_set.input_joystick_data.fname);
     _json_object_set_member_double(input_joystick_data_object, "max_axis", user_set.input_joystick_data.max_axis);
     _json_object_set_member_int(input_joystick_data_object, "interval", user_set.input_joystick_data.interval);
+
+    JsonObject *input_joystick_sdl_data_object = _json_object_get_member_object(root_object, "input_joystick_sdl_data");
+    _json_object_set_member_int(input_joystick_sdl_data_object, "number", user_set.input_joystick_sdl_data.number);
+    _json_object_set_member_double(input_joystick_sdl_data_object, "max_axis", user_set.input_joystick_sdl_data.max_axis);
 
     JsonObject *input_accel_data_object = _json_object_get_member_object(root_object, "input_accelerometer_data");
     _json_object_set_member_string(input_accel_data_object, "fname", user_set.input_accel_data.fname);
@@ -565,7 +584,7 @@ void SaveUserSettings()
 void parse_command_line(int argc, char *argv[])
 {
     struct arg_str *input  = arg_str0("i","input","<type>", "input device type ('dummy', 'keyboard',");
-    struct arg_rem *input1 = arg_rem (NULL, "'joystick' or 'accelerometer')");
+    struct arg_rem *input1 = arg_rem (NULL, "'joystick', 'joystick_sdl' or 'accelerometer')");
     struct arg_str *vibro  = arg_str0("v","vibro","<type>", "vibro device type ('dummy' or 'freerunner')");
     struct arg_str *cal    = arg_str0("c","calibration","<option>", "perform input device calibration ('auto' option)");
     struct arg_rem *cal1   = arg_rem (NULL, "or reset calibration data ('reset' option)");

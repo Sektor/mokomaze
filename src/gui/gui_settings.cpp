@@ -161,6 +161,21 @@ static int FillContainer(gcn::Container *cont, gcn::Widget **widgets, int count,
     return y;
 }
 
+static bool IsEqual(int x, int y)
+{
+    return (x == y);
+}
+
+static bool IsEqual(float x, float y)
+{
+    return (fabs(x - y) < FLT_EPSILON);
+}
+
+static bool IsEqual(std::string x, std::string y)
+{
+    return (x == y);
+}
+
 template<class X>
 class GenericListModel: public gcn::ListModel
 {
@@ -206,7 +221,7 @@ public:
     {
         for (int i = 0; i < (int)elements.size(); i++)
         {
-            if (elements[i].value == val)
+            if (IsEqual(elements[i].value, val))
                 return i;
         }
         return -1;
@@ -374,6 +389,10 @@ gcn::Label *lblJsMax = NULL;
 SuperDropDown *downJsMax = NULL;
 gcn::Label *lblJsDelay = NULL;
 SuperDropDown *downJsDelay = NULL;
+gcn::Label *lblJsSdlNumber = NULL;
+SuperDropDown *downJsSdlNumber = NULL;
+gcn::Label *lblJsSdlMax = NULL;
+SuperDropDown *downJsSdlMax = NULL;
 gcn::Label *lblAccelFile = NULL;
 SuperDropDown *downAccelFile = NULL;
 gcn::Label *lblAccelMax = NULL;
@@ -423,6 +442,7 @@ void TuneInputTypeView()
 {
     InputType itype = (InputType)downInputType->getSelectedValue<int>();
     bool jsVis = false;
+    bool jsSdlVis = false;
     bool accelVis = false;
     gcn::Widget *lastWidget = NULL;
 
@@ -437,6 +457,11 @@ void TuneInputTypeView()
         jsVis = true;
         lastWidget = downJsDelay;
     }
+    else if (itype == INPUT_JOYSTICK_SDL)
+    {
+        jsSdlVis = true;
+        lastWidget = downJsSdlMax;
+    }
     else if (itype == INPUT_ACCEL)
     {
         accelVis = true;
@@ -449,6 +474,10 @@ void TuneInputTypeView()
     downJsMax->setVisible(jsVis);
     lblJsDelay->setVisible(jsVis);
     downJsDelay->setVisible(jsVis);
+    lblJsSdlNumber->setVisible(jsSdlVis);
+    downJsSdlNumber->setVisible(jsSdlVis);
+    lblJsSdlMax->setVisible(jsSdlVis);
+    downJsSdlMax->setVisible(jsSdlVis);
     lblAccelFile->setVisible(accelVis);
     downAccelFile->setVisible(accelVis);
     lblAccelMax->setVisible(accelVis);
@@ -510,6 +539,8 @@ static void LoadUiState()
     downJsFile->setSelectedValue<std::string>(user_set->input_joystick_data.fname);
     downJsMax->setSelectedValue<int>(user_set->input_joystick_data.max_axis);
     downJsDelay->setSelectedValue<int>(user_set->input_joystick_data.interval);
+    downJsSdlNumber->setSelectedValue<int>(user_set->input_joystick_sdl_data.number);
+    downJsSdlMax->setSelectedValue<int>(user_set->input_joystick_sdl_data.max_axis);
     downAccelFile->setSelectedValue<std::string>(user_set->input_accel_data.fname);
     downAccelMax->setSelectedValue<int>(user_set->input_accel_data.max_axis);
     downAccelDelay->setSelectedValue<int>(user_set->input_accel_data.interval);
@@ -548,6 +579,8 @@ static void SaveUiState()
         (user_set->input_joystick_data.fname != downJsFile->getSelectedValue<std::string>()) ||
         (user_set->input_joystick_data.max_axis != downJsMax->getSelectedValue<int>()) ||
         (user_set->input_joystick_data.interval != downJsDelay->getSelectedValue<int>()) ||
+        (user_set->input_joystick_sdl_data.number != downJsSdlNumber->getSelectedValue<int>()) ||
+        (user_set->input_joystick_sdl_data.max_axis != downJsSdlMax->getSelectedValue<int>()) ||
         (user_set->input_accel_data.fname != downAccelFile->getSelectedValue<std::string>()) ||
         (user_set->input_accel_data.max_axis != downAccelMax->getSelectedValue<int>()) ||
         (user_set->input_accel_data.interval != downAccelDelay->getSelectedValue<int>());
@@ -584,6 +617,8 @@ static void SaveUiState()
     user_set->input_joystick_data.fname = strdup(downJsFile->getSelectedValue<std::string>().c_str());
     user_set->input_joystick_data.max_axis = downJsMax->getSelectedValue<int>();
     user_set->input_joystick_data.interval = downJsDelay->getSelectedValue<int>();
+    user_set->input_joystick_sdl_data.number = downJsSdlNumber->getSelectedValue<int>();
+    user_set->input_joystick_sdl_data.max_axis = downJsSdlMax->getSelectedValue<int>();
     if (user_set->input_accel_data.fname)
         free(user_set->input_accel_data.fname);
     user_set->input_accel_data.fname = strdup(downAccelFile->getSelectedValue<std::string>().c_str());
@@ -656,6 +691,8 @@ static void RestoreUiDefaults()
     downJsFile->setSelectedValue<std::string>(JS_DEV "0");
     downJsMax->setSelectedValue<int>(32768);
     downJsDelay->setSelectedValue<int>(2);
+    downJsSdlNumber->setSelectedValue<int>(0);
+    downJsSdlMax->setSelectedValue<int>(32768);
     downAccelFile->setSelectedValue<std::string>(ACCEL_TOUCHBOOK);
     downAccelMax->setSelectedValue<int>(64);
     downAccelDelay->setSelectedValue<int>(2);
@@ -1047,8 +1084,8 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     /*
      * Init input tab
      */
-    const int inputTypeVariants[] = {INPUT_DUMMY, INPUT_KEYBOARD, INPUT_JOYSTICK, INPUT_ACCEL};
-    const char *inputTypeVariantNames[] = {INPUT_DUMMY_STR, INPUT_KEYBOARD_STR, INPUT_JOYSTICK_STR, INPUT_ACCEL_STR};
+    const int inputTypeVariants[] = {INPUT_DUMMY, INPUT_KEYBOARD, INPUT_JOYSTICK, INPUT_JOYSTICK_SDL, INPUT_ACCEL};
+    const char *inputTypeVariantNames[] = {INPUT_DUMMY_STR, INPUT_KEYBOARD_STR, INPUT_JOYSTICK_STR, INPUT_JOYSTICK_SDL_STR, INPUT_ACCEL_STR};
     gcn::ListModel *inputTypeListModel = CreateGenericListModel(inputTypeVariantNames, ARRAY_AND_SIZE(inputTypeVariants, int));
 
     const float inputSensVariants[] = {
@@ -1061,13 +1098,16 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     const char *jsFileVariants[] = {JS_DEV "0", JS_DEV "1", JS_DEV "2", JS_DEV "3"};
     gcn::ListModel *jsFileListModel = CreateGenericListModel(ARRAY_AND_SIZE(jsFileVariants, char *));
 
+    const int jsSdlNumberVariants[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    gcn::ListModel *jsSdlNumberListModel = CreateGenericListModel(ARRAY_AND_SIZE(jsSdlNumberVariants, int));
+
     const char *accelFileVariants[] = {ACCEL_TOUCHBOOK};
     gcn::ListModel *accelFileListModel = CreateGenericListModel(ARRAY_AND_SIZE(accelFileVariants, char *));
 
     const int axisMaxVariants[] = {32, 64, 100, 128, 256, 512, 1000, 1024, 8192, 16384, 32768};
     gcn::ListModel *axisMaxListModel = CreateGenericListModel(ARRAY_AND_SIZE(axisMaxVariants, int));
 
-    gcn::ListModel *inputListModels[] = {inputTypeListModel, inputSensListModel, jsFileListModel, accelFileListModel, axisMaxListModel};
+    gcn::ListModel *inputListModels[] = {inputTypeListModel, inputSensListModel, jsFileListModel, jsSdlNumberListModel, accelFileListModel, axisMaxListModel};
     HoldListModels(inputListModels);
 
     gcn::Label *lblInputType = new gcn::Label("Input device type");
@@ -1090,6 +1130,11 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     lblJsDelay = new gcn::Label("Joystick reading interval (ms)");
     downJsDelay = CreateDropDown(delayListModel, scrollBarW, downScrollAreaH);
 
+    lblJsSdlNumber = new gcn::Label("Joystick number");
+    downJsSdlNumber = CreateDropDown(jsSdlNumberListModel, scrollBarW, downScrollAreaH);
+    lblJsSdlMax = new gcn::Label("Max joystick axis offset");
+    downJsSdlMax = CreateDropDown(axisMaxListModel, scrollBarW, downScrollAreaH);
+
     lblAccelFile = new gcn::Label("Accelerometer file");
     downAccelFile = CreateDropDown(accelFileListModel, scrollBarW, downScrollAreaH);
     lblAccelMax = new gcn::Label("Max accelerometer axis offset");
@@ -1105,13 +1150,16 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
         chbInputSwapXy, chbInputInvertX, chbInputInvertY, lblInputSens, downInputSens,
         lblBallSpeed, downBallSpeed};
     gcn::Widget *inputJsWidgets[] = {lblJsFile, downJsFile, lblJsMax, downJsMax, lblJsDelay, downJsDelay};
+    gcn::Widget *inputJsSdlWidgets[] = {lblJsSdlNumber, downJsSdlNumber, lblJsSdlMax, downJsSdlMax};
     gcn::Widget *inputAccelWidgets[] = {lblAccelFile, downAccelFile, lblAccelMax, downAccelMax, lblAccelDelay, downAccelDelay};
     inputTabBaseHeight = FillContainer(inputCont, ARRAY_AND_SIZE(inputBaseWidgets, gcn::Widget *), scrolledTabW);
     FillContainer(inputCont, ARRAY_AND_SIZE(inputJsWidgets, gcn::Widget *), scrolledTabW, inputTabBaseHeight);
+    FillContainer(inputCont, ARRAY_AND_SIZE(inputJsSdlWidgets, gcn::Widget *), scrolledTabW, inputTabBaseHeight);
     FillContainer(inputCont, ARRAY_AND_SIZE(inputAccelWidgets, gcn::Widget *), scrolledTabW, inputTabBaseHeight);
     inputCont->setSize(winRect.width, max(inputTabBaseHeight + downScrollAreaH, scrollHeight));
     HoldWidgets(inputBaseWidgets);
     HoldWidgets(inputJsWidgets);
+    HoldWidgets(inputJsSdlWidgets);
     HoldWidgets(inputAccelWidgets);
 
     /*

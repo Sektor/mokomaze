@@ -1,8 +1,6 @@
-/*  input.h
+/*  input_joystick_sdl.h
  *
- *  Input system.
- *
- *  (c) 2011-2012 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2012 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -20,28 +18,16 @@
  *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef INPUT_H
-#define INPUT_H
+#ifndef INPUT_JOYSTICK_SDL_H
+#define INPUT_JOYSTICK_SDL_H
 
-#include "input_calibration.h"
-#include "input_dummy.h"
-#include "input_keyboard.h"
-#include "input_joystick.h"
-#include "input_joystick_sdl.h"
-#include "input_accel.h"
+#include "inputtypes.h"
 
-typedef enum {
-    INPUT_DUMMY,
-    INPUT_KEYBOARD,
-    INPUT_JOYSTICK,
-    INPUT_JOYSTICK_SDL,
-    INPUT_ACCEL
-} InputType;
+typedef struct {
+    int number;
+    float max_axis;
+} InputJoystickSdlData;
 
-#define INPUT_DUMMY_STR "dummy"
-#define INPUT_KEYBOARD_STR "keyboard"
-#define INPUT_JOYSTICK_STR "joystick"
-#define INPUT_JOYSTICK_SDL_STR "joystick_sdl"
-#define INPUT_ACCEL_STR "accelerometer"
+void input_get_joystick_sdl(InputInterface *input, InputJoystickSdlData *data);
 
-#endif /* INPUT_H */
+#endif /* INPUT_JOYSTICK_SDL_H */

@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0)
+    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0)
     {
         log_error("Couldn't initialise SDL: %s", SDL_GetError());
         return EXIT_FAILURE;

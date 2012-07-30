@@ -32,9 +32,14 @@ static void input_read(float *x, float *y, float *z)
 {
 }
 
+static void input_update(void *data)
+{
+}
+
 void input_get_dummy(InputInterface *input)
 {
     input->init = &input_init;
     input->shutdown = &input_shutdown;
     input->read = &input_read;
+    input->update = &input_update;
 }

@@ -30,6 +30,11 @@
         "interval": 2
     },
 
+    "input_joystick_sdl_data": {
+        "number": 0,
+        "max_axis": 32768.0
+    },
+
     "input_accelerometer_data": {
         "fname": "/dev/input/accel0",
         "max_axis": 64.0,

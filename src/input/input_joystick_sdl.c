@@ -1,6 +1,6 @@
-/*  input_keyboard.c
+/*  input_joystick_sdl.c
  *
- *  (c) 2009-2012 Anton Olkhovik <ant007h@gmail.com>
+ *  (c) 2012 Anton Olkhovik <ant007h@gmail.com>
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -19,32 +19,35 @@
  */
 
 #include <SDL/SDL.h>
-#include "input_keyboard.h"
+#include "../mazecore/mazehelpers.h"
+#include "input_joystick_sdl.h"
+
+static SDL_Joystick *joystick;
+static InputJoystickSdlData params = {0};
 
 static void input_init()
 {
+    SDL_JoystickEventState(SDL_ENABLE);
+    joystick = SDL_JoystickOpen(params.number);
 }
 
 static void input_shutdown()
 {
+    SDL_JoystickEventState(SDL_DISABLE);
+    if (joystick)
+        SDL_JoystickClose(joystick);
 }
 
 static void input_read(float *x, float *y, float *z)
 {
-    float a = 1;
     float kx = 0, ky = 0;
-    Uint8 *keystate = SDL_GetKeyState(NULL);
-
-    if ( keystate[SDLK_UP] )
-        ky = -a;
-    else if ( keystate[SDLK_DOWN] )
-        ky = a;
-
-    if ( keystate[SDLK_LEFT] )
-        kx = -a;
-    else if ( keystate[SDLK_RIGHT] )
-        kx = a;
-
+    if (joystick)
+    {
+        kx = SDL_JoystickGetAxis(joystick, 0) / params.max_axis;
+        ky = SDL_JoystickGetAxis(joystick, 1) / params.max_axis;
+        clamp(kx, -1, 1);
+        clamp(ky, -1, 1);
+    }
     if (x) *x = kx;
     if (y) *y = ky;
     if (z) *z = 0;
@@ -54,8 +57,9 @@ static void input_update(void *data)
 {
 }
 
-void input_get_keyboard(InputInterface *input)
+void input_get_joystick_sdl(InputInterface *input, InputJoystickSdlData *data)
 {
+    params = *data;
     input->init = &input_init;
     input->shutdown = &input_shutdown;
     input->read = &input_read;

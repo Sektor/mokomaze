@@ -431,6 +431,8 @@ void SetInput()
         input_get_keyboard(&input);
     else if (itype == INPUT_JOYSTICK)
         input_get_joystick(&input, &user_set->input_joystick_data);
+    else if (itype == INPUT_JOYSTICK_SDL)
+        input_get_joystick_sdl(&input, &user_set->input_joystick_sdl_data);
     else if (itype == INPUT_ACCEL)
         input_get_accel(&input, &user_set->input_accel_data);
     else

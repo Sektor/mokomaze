@@ -177,6 +177,10 @@ static void input_read(float *x, float *y, float *z)
     if (z) *z = ac[2];
 }
 
+static void input_update(void *data)
+{
+}
+
 void input_get_accel(InputInterface *input, InputAccelData *data)
 {
     if (params.fname)
@@ -190,4 +194,5 @@ void input_get_accel(InputInterface *input, InputAccelData *data)
     input->init = &input_init;
     input->shutdown = &input_shutdown;
     input->read = &input_read;
+    input->update = &input_update;
 }
