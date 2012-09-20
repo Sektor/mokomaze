@@ -12,9 +12,9 @@ AC_PROG_CXX
 AC_HEADER_STDC
 
 AC_PROG_SED
-AC_PATH_PROG(RSVGCONVERT,rsvg-convert)
-if test -z "$RSVGCONVERT" ; then
-	AC_MSG_ERROR([You need rsvg-convert to build the images!])
+AC_PATH_PROG(XSLTPROC,xsltproc)
+if test -z "$XSLTPROC" ; then
+	AC_MSG_ERROR([You need xsltproc to build the images!])
 fi
 
 PKG_CHECK_MODULES(SDL, sdl >= 1.0.0)

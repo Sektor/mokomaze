@@ -8,11 +8,6 @@ dist_mokomaze_DATA = \
   desk.svg \
   wall.svg \
   openmoko.svg \
-  filters.svg \
-  prev.svg \
-  next.svg \
-  settings.svg \
-  close.svg \
   prev-main.svg \
   next-main.svg \
   settings-main.svg \
@@ -21,8 +16,6 @@ dist_mokomaze_DATA = \
   next-light.svg \
   prev-grey.svg \
   next-grey.svg
-
-nodist_mokomaze_DATA = background.svg
 
 #
 # desktop integration: .desktop file
@@ -34,28 +27,47 @@ dist_desktop_DATA = mokomaze.desktop
 # desktop integration: application icon
 #
 appicondir = $(datadir)/pixmaps
-dist_appicon_DATA = mokomaze.png
+dist_appicon_DATA = mokomaze.svg
 
 EXTRA_DIST = \
+  logo.xsl \
+  buttons.xsl \
+  clean.xsl \
   background.sed \
+  ball.sed \
   kde.svg \
-  mokomaze-main.svg \
-  mokomaze.sed \
-  neverlogos.svg
+  neverlogos.svg \
+  filters.svg \
+  prev.svg \
+  next.svg \
+  settings.svg \
+  close.svg
 
 MAINTAINERCLEANFILES = Makefile.in
 
 CLEANFILES = \
-  mokomaze.png \
+  mokomaze.svg \
   background.svg \
-  mokomaze.svg
+  ball.svg \
+  *-main.svg \
+  *-light.svg \
+  *-grey.svg
 
 background.svg: kde.svg background.sed
-	$(SED) -n -f $(srcdir)/background.sed < $< > $@
+	$(SED) -n -f $(srcdir)/background.sed < $< | $(XSLTPROC) -o $@ clean.xsl -
 
-mokomaze.svg: neverlogos.svg mokomaze.sed
-	$(SED) -f $(srcdir)/mokomaze.sed < $< > $@
+ball.svg: neverlogos.svg ball.sed
+	$(SED) -f $(srcdir)/ball.sed < $< | $(XSLTPROC) -o $@ clean.xsl -
 
-mokomaze.png: mokomaze-main.svg mokomaze.svg background.svg filters.svg
-	$(RSVGCONVERT) --output $@ $<
+%-main.svg : %.svg background.svg filters.svg buttons.xsl
+	$(XSLTPROC) -o $@ --stringparam filter_name "" buttons.xsl $<
+
+%-light.svg : %.svg background.svg filters.svg buttons.xsl
+	$(XSLTPROC) -o $@ --stringparam filter_name "light-filter" buttons.xsl $<
+
+%-grey.svg : %.svg background.svg filters.svg buttons.xsl
+	$(XSLTPROC) -o $@ --stringparam filter_name "grey-filter" buttons.xsl $<
+
+mokomaze.svg : ball.svg background.svg filters.svg logo.xsl
+	$(XSLTPROC) -o $@ --stringparam filter_name "green-filter" logo.xsl ball.svg
 
