@@ -54,20 +54,20 @@ CLEANFILES = \
   *-grey.svg
 
 background.svg: kde.svg background.sed
-	$(SED) -n -f $(srcdir)/background.sed < $< | $(XSLTPROC) -o $@ clean.xsl -
+	$(SED) -n -f $(srcdir)/background.sed < $< | $(XSLTPROC) -o $@ $(srcdir)/clean.xsl -
 
 ball.svg: neverlogos.svg ball.sed
-	$(SED) -f $(srcdir)/ball.sed < $< | $(XSLTPROC) -o $@ clean.xsl -
+	$(SED) -f $(srcdir)/ball.sed < $< | $(XSLTPROC) -o $@ $(srcdir)/clean.xsl -
 
 %-main.svg : %.svg background.svg filters.svg buttons.xsl
-	$(XSLTPROC) -o $@ --stringparam filter_name "" buttons.xsl $<
+	$(XSLTPROC) -o $@ --stringparam filter_name "" $(srcdir)/buttons.xsl $<
 
 %-light.svg : %.svg background.svg filters.svg buttons.xsl
-	$(XSLTPROC) -o $@ --stringparam filter_name "light-filter" buttons.xsl $<
+	$(XSLTPROC) -o $@ --stringparam filter_name "light-filter" $(srcdir)/buttons.xsl $<
 
 %-grey.svg : %.svg background.svg filters.svg buttons.xsl
-	$(XSLTPROC) -o $@ --stringparam filter_name "grey-filter" buttons.xsl $<
+	$(XSLTPROC) -o $@ --stringparam filter_name "grey-filter" $(srcdir)/buttons.xsl $<
 
 mokomaze.svg : ball.svg background.svg filters.svg logo.xsl
-	$(XSLTPROC) -o $@ --stringparam filter_name "green-filter" logo.xsl ball.svg
+	$(XSLTPROC) -o $@ --stringparam filter_name "green-filter" $(srcdir)/logo.xsl ball.svg
 
