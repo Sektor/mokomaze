@@ -23,3 +23,13 @@ prev*.png
 mokomaze.png
 mokomaze.svg
 background.svg
+data/ball.svg
+data/close-main.svg
+data/next-grey.svg
+data/next-light.svg
+data/next-main.svg
+data/prev-grey.svg
+data/prev-light.svg
+data/prev-main.svg
+data/settings-main.svg
+
