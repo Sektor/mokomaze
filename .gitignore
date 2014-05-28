@@ -8,10 +8,12 @@ config.h*
 config.log
 config.status
 configure
+compile
 depcomp
 install-sh
 missing
 .deps
+.dirstamp
 stamp-h1
 mokomaze
 mokomaze-*.tar.gz
