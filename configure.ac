@@ -17,6 +17,9 @@ if test -z "$XSLTPROC" ; then
 	AC_MSG_ERROR([You need xsltproc to build the images!])
 fi
 
+PKG_CHECK_MODULES([PNG], [libpng])
+AC_SUBST([PNG])
+
 PKG_CHECK_MODULES(SDL, sdl >= 1.0.0)
 AC_SUBST(SDL)
 

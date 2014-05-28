@@ -17,6 +17,7 @@ AM_CFLAGS = \
   -Wall \
   -pedantic \
   -std=c99 \
+  @PNG_CFLAGS@ \
   @SDL_CFLAGS@ \
   @GLIB_CFLAGS@ \
   @GLIBJSON_CFLAGS@ \
@@ -76,6 +77,7 @@ mokomaze_SOURCES = \
   dirs.h
 
 mokomaze_LDADD  = \
+  @PNG_LIBS@ \
   @SDL_LIBS@ \
   @GLIB_LIBS@ \
   @GLIBJSON_LIBS@ \
