@@ -1,6 +1,6 @@
 AC_PREREQ(2.53)
 AC_INIT(mokomaze, 0.7.0+, http://mokomaze.sourceforge.net/)
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_CONFIG_SRCDIR(src/main.c)
 AC_CONFIG_HEADERS(config.h)
 AM_MAINTAINER_MODE([enable])
