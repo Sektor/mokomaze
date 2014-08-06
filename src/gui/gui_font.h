@@ -3,7 +3,7 @@
  *  (c) 2011-2012 Anton Olkhovik <ant007h@gmail.com>
  *
  *  Based on a sample Guichan font class by knives.dev@gmail.com
- *  http://docs.google.com/Doc?id=dgp8xrct_9db3zc2hc
+ *  https://docs.google.com/Doc?id=dgp8xrct_9db3zc2hc
  *
  *  This file is part of Mokomaze - labyrinth game.
  *
@@ -18,7 +18,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with Mokomaze.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GUI_FONT_H

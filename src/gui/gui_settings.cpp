@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with Mokomaze.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with Mokomaze.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <iostream>
@@ -33,7 +33,7 @@
 #define FIX_DROPDOWN_HEIGHT
 
 // Issue 59: sometimes dropdown halts applications when dropdown is clicked
-// http://code.google.com/p/guichan/issues/detail?id=59
+// https://code.google.com/p/guichan/issues/detail?id=59
 class SuperGui : public gcn::Gui
 {
 #ifdef FIX_FOCUSHANDLER_EXCEPTION
@@ -65,7 +65,7 @@ protected:
 };
 
 // Issue 137: TabbedArea does not call the logic()-method of its children
-// http://code.google.com/p/guichan/issues/detail?id=137
+// https://code.google.com/p/guichan/issues/detail?id=137
 class SuperTabbedArea : public gcn::TabbedArea
 {
 #ifdef FIX_TAB_SCROLL
