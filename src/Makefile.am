@@ -3,7 +3,7 @@ AM_CPPFLAGS = \
   -DDATADIR=\""$(datadir)"\" \
   -D_GNU_SOURCE \
   -DPIXMAPDIR=\""$(datadir)/pixmaps"\" \
-  -DFONTDIR=\""@MAZEFONTDIR@"\"
+  -DFONT_PATH=\""$(FONT_PATH)"\"
 
 if RGBSWAP
 AM_CPPFLAGS += -DRGBSWAP

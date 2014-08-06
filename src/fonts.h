@@ -23,7 +23,6 @@
 
 #include "dirs.h"
 
-#define DEFAULT_FONT_NAME "LiberationMono-Regular.ttf"
-#define DEFAULT_FONT_FILE MFONTDIR DEFAULT_FONT_NAME
+#define DEFAULT_FONT_FILE FONT_PATH
 
 #endif /* FONTS_H */
