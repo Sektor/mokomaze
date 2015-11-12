@@ -634,7 +634,9 @@ static void SaveUiState()
     if (video_set_modified)
     {
         need_quit = true;
-        ShowMsg("New video settings\nwill be applied\nat the next game start");
+        ShowMsg("New video settings\n"
+                "will be applied\n"
+                "at the next game start");
     }
     else
         running = false;
@@ -712,7 +714,8 @@ class PresetActionListener : public gcn::ActionListener
         RestoreUiDefaults();
         if (sourceId == presetDesktopButton->getId())
         {
-            note = "Use the arrow keys\nto control the ball.";
+            note = "Use the arrow keys\n"
+                   "to control the ball.";
         }
         else if (sourceId == presetFreerunnerButton->getId())
         {
@@ -729,7 +732,8 @@ class PresetActionListener : public gcn::ActionListener
             downBumpMin->setSelectedValue<float>(3.0);
             downBumpMax->setSelectedValue<float>(40.0);
             
-            note = "Tilt the smartphone\nto control the ball.";
+            note = "Tilt the smartphone\n"
+                   "to control the ball.";
         }
         else if (sourceId == presetTouchbookButton->getId())
         {
@@ -741,7 +745,8 @@ class PresetActionListener : public gcn::ActionListener
             downInputSens->setSelectedValue<float>(1.0);
             downBallSpeed->setSelectedValue<float>(1.8);
 
-            note = "Tilt the tablet\nto control the ball.";
+            note = "Tilt the tablet\n"
+                   "to control the ball.";
         }
         else if (sourceId == presetPandoraButton->getId())
         {
@@ -751,7 +756,9 @@ class PresetActionListener : public gcn::ActionListener
             downInputType->setSelectedValue<int>(INPUT_JOYSTICK);
             downJsFile->setSelectedValue<std::string>(JS_DEV "1");
 
-            note = "Use the left nub\n(in joystick mode)\nto control the ball.";
+            note = "Use the left nub\n"
+                   "(in joystick mode)\n"
+                   "to control the ball.";
         }
         TuneView();
         std::string text = "Preset applied";
@@ -788,7 +795,9 @@ class CalPerformActionListener : public gcn::ActionListener
     void action(const gcn::ActionEvent &actionEvent)
     {
         calibration_requested = true;
-        ShowMsg("Calibration will start\nwhen you return\nto the game");
+        ShowMsg("Calibration will start\n"
+                "when you return\n"
+                "to the game");
     }
 };
 
@@ -799,7 +808,8 @@ class CalResetActionListener : public gcn::ActionListener
         calibration_requested = false;
         user_set->input_calibration_data.cal_x = 0;
         user_set->input_calibration_data.cal_y = 0;
-        ShowMsg("Calibration data\nwas cleared");
+        ShowMsg("Calibration data\n"
+                "was cleared");
     }
 };
 
