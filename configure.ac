@@ -50,7 +50,7 @@ AC_CHECK_PROGS([FCMATCH],[fc-match])
 
 AC_ARG_WITH(font-name,
         AS_HELP_STRING([--with-font-name="$font_name"],
-                [Name of the font to default to at runtime with GLC ($font_name is default)]),
+                [Name of the font to lookup font file paths using fc-match ($font_name is default)]),
         [FONT_NAME="$withval"],
         [FONT_NAME="$font_name"])
 
