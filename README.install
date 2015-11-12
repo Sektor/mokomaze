@@ -5,11 +5,11 @@ As usual:
   $ ./configure
   $ make
   # make install
-The program uses "LiberationMono-Regular.ttf" font
-(from package "ttf-liberation") which is usually placed in directory
-"/usr/share/fonts/truetype/ttf-liberation". This path is configurable
-via FONTDIR parameter for ./configure. E.g.:
-  $ ./configure FONTDIR=/some/directory
+The program uses the "Liberation Mono" font, the path is discovered
+via fontconfig or looking in the usual path on some Linux distros.
+You can look up a different font name with --with-font-name or
+choose a specific font using --with-font-path, for example:
+  $ ./configure --with-font-path=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 libsdl, libsdl-image, libsdl-ttf and libode are also needed for
 compilation. There is also --enable-rgb-swap option for ./configure
 that may help to avoid font color swapping (specific to various
