@@ -1,4 +1,5 @@
 *.o
+ChangeLog
 INSTALL
 Makefile
 Makefile.in
