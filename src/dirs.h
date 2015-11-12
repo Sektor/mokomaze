@@ -24,7 +24,5 @@
 //#define MDIR ""
 //#define MDIR "../data/"
 #define MDIR DATADIR "/mokomaze/"
-//#define MFONTDIR ""
-#define MFONTDIR FONTDIR "/"
 
 #endif /* DIRS_H */
