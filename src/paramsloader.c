@@ -600,7 +600,7 @@ void parse_command_line(int argc, char *argv[])
     const char* progname = "mokomaze";
     int nerrors = 0;
 
-    /* verify the argtable[] entries were allocated sucessfully */
+    /* verify the argtable[] entries were allocated successfully */
     if (arg_nullcheck(argtable) != 0)
     {
         /* NULL entries were detected, some allocations must have failed */

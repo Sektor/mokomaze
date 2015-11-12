@@ -33,7 +33,7 @@
 	* Command line arguments support is improved
 
 2009-02-03	v0.2.1
-	* Improved compatability with FSO, SHR (vibration works now)
+	* Improved compatibility with FSO, SHR (vibration works now)
 	  and FDOM (can be run now)
 
 2009-01-31	v0.2.0
