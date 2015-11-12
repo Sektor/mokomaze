@@ -722,10 +722,38 @@ void render_window()
             }
             else if (event.type == SDL_KEYDOWN)
             {
-                if (event.key.keysym.sym == SDLK_ESCAPE)
+                switch(event.key.keysym.sym)
                 {
-                    btndown = true;
+                case SDLK_q:
+                case SDLK_ESCAPE:
                     btnesc = true;
+                case SDLK_SPACE:
+                case SDLK_p:
+                case SDLK_PAUSE:
+                    btndown = true;
+                    break;
+                default:
+                    break;
+                }
+            }
+            else if (event.type == SDL_KEYUP)
+            {
+                switch(event.key.keysym.sym)
+                {
+                case SDLK_q:
+                case SDLK_ESCAPE:
+                    if( !wasclick || ingame || show_settings )
+                        StopFastChange();
+                    else
+                        done = true;
+                    break;
+                case SDLK_SPACE:
+                case SDLK_p:
+                case SDLK_PAUSE:
+                    StopFastChange();
+                    break;
+                default:
+                    break;
                 }
             }
 
