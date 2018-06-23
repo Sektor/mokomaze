@@ -32,8 +32,6 @@
 
 int main(int argc, char *argv[])
 {
-    g_type_init();
-
     parse_command_line(argc, argv);
     if (!load_params())
     {

@@ -24,7 +24,6 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <librsvg/rsvg.h>
-#include <librsvg/rsvg-cairo.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
@@ -126,8 +125,6 @@ SDL_Surface *LoadSvg(char *fname, int hor_width, int hor_height, bool rot, bool 
     SDL_Surface *res = NULL;
     bool skip = false;
 
-    rsvg_init();
-    
     GError *error = NULL;
     RsvgHandle *rsvg_handle = rsvg_handle_new_from_file(fname, &error);
     if (!rsvg_handle)
@@ -242,8 +239,6 @@ SDL_Surface *LoadSvg(char *fname, int hor_width, int hor_height, bool rot, bool 
         }
     }
     
-    rsvg_term();
-
     return res;
 }
 
