@@ -479,7 +479,7 @@ GameState maze_step(int delta_ticks)
         }
     } //for
 
-    //determing new position of the ball
+    //determining new position of the ball
     poss = dGeomGetPosition(geom);
     ball_rot = dGeomGetRotation(geom);
     ball_pos_x = poss[0]*PHYS_SCALE;
