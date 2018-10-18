@@ -1,5 +1,5 @@
 AC_PREREQ(2.53)
-AC_INIT(mokomaze, 0.7.0+, http://mokomaze.sourceforge.net/)
+AC_INIT(mokomaze, 0.7.0+, https://mokomaze.sourceforge.io/)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_CONFIG_SRCDIR(src/main.c)
 AC_CONFIG_HEADERS(config.h)

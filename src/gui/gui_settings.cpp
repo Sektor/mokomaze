@@ -1218,7 +1218,7 @@ void settings_init(SDL_Surface *disp, int font_height, User *_user_set, User *_u
     gcn::Label *lblAbout1 = new gcn::Label("Mokomaze");
     gcn::Label *lblAbout2 = new gcn::Label("Ball-in-a-labyrinth game");
     gcn::Label *lblAbout3 = new gcn::Label("Copyright (C) 2009-2012 Anton Olkhovik");
-    gcn::Label *lblAbout4 = new gcn::Label("http://mokomaze.sourceforge.net/");
+    gcn::Label *lblAbout4 = new gcn::Label("https://mokomaze.sourceforge.io/");
 
     lblAbout1->setAlignment(gcn::Graphics::CENTER);
     lblAbout2->setAlignment(gcn::Graphics::CENTER);
