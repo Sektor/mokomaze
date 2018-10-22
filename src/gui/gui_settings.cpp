@@ -1267,7 +1267,7 @@ void settings_show(bool *_calibration_requested, bool *_video_set_modified, bool
         return;
     }
     // Catch all Std exceptions
-    catch (std::exception e)
+    catch (std::exception& e)
     {
         std::cerr << "Std exception: " << e.what() << std::endl;
         return;
