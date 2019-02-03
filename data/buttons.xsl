@@ -7,11 +7,18 @@
     <xsl:copy-of select="document('background.svg')/svg:svg/svg:defs"/>
     <xsl:copy-of select="svg:svg/svg:defs"/>
 </defs>
-<g filter="url(#{$filter_name})">
+<xsl:element name="g">
+    <xsl:if test="$filter_name">
+        <xsl:attribute name="filter">
+            <xsl:text>url(#</xsl:text>
+            <xsl:value-of select="$filter_name"/>
+            <xsl:text>)</xsl:text>
+        </xsl:attribute>
+    </xsl:if>
     <xsl:copy-of select="document('background.svg')/svg:svg/svg:g"/>
     <xsl:copy-of select="svg:svg/svg:g"/>
     <xsl:copy-of select="svg:svg/svg:path"/>
-</g>
+</xsl:element>
 </svg>
 </xsl:template>
 </xsl:stylesheet>
